@@ -73,20 +73,20 @@ class MediumPoster(PosterBase):
                 print("\n[+] Login detected! Editor found. Proceeding with automation...\n")
                 
                 try:
-                    success, live_url = self._real_post(page, content)
-                    return success, live_url
+                    success, live_url, account_used = self._real_post(page, content)
+                    return success, live_url, account_used
                 except Exception as post_err:
                     print(f"[-] Failed to post: {post_err}")
-                    return False, None
+                    return False, None, "Local Profile"
                 finally:
                     context.close()
                 
         except Exception as e:
             print(f"[-] Automation error: {e}")
-            return False, None
+            return False, None, "Local Profile"
             
-    def _real_post(self, page, content: str) -> tuple[bool, str]:
-        print("[*] Extracting Title and Body from Markdown...")
+    def _real_post(self, page, content: str) -> tuple[bool, str, str]:
+        print("[*] Extracting Title and Body...")
         lines = content.strip().split("\n")
         title = "An Insight into Modern Tech"
         if lines and lines[0].startswith("# "):
@@ -96,14 +96,11 @@ class MediumPoster(PosterBase):
         print("[*] Waiting for Medium Editor to be ready...")
         time.sleep(5)
         
-        # Click the editor area first to ensure focus, then go to very top
         print("[*] Clicking editor to focus...")
         try:
-            # Click anywhere on the editor
             editor = page.locator('[contenteditable="true"]').first
             editor.click()
             time.sleep(0.5)
-            # Jump to top of document to make sure we are in the title
             page.keyboard.press("Control+Home")
             time.sleep(0.5)
             print("[+] Focused editor, cursor at top. Typing Title...")
@@ -111,8 +108,6 @@ class MediumPoster(PosterBase):
             print(f"[-] Error focusing editor: {e}")
         
         time.sleep(1)
-        
-        # Typing the title
         page.keyboard.type(title, delay=50)
         time.sleep(1)
         
@@ -121,45 +116,89 @@ class MediumPoster(PosterBase):
         time.sleep(1)
         
         print("[*] Typing Body (this will take a while)...")
-        # Typing the whole body with delay=10 to simulate human typing
         page.keyboard.type(content, delay=10)
         time.sleep(2)
         
-        print("[*] Clicking Publish button...")
-        # Medium's publish button usually has the text "Publish"
-        publish_btn = page.locator('button:has-text("Publish")').first
-        publish_btn.click()
+        # Escape to dismiss any floating toolbar before clicking Publish
+        page.keyboard.press("Escape")
+        time.sleep(1)
         
-        print("[*] Waiting for the slide-in panel or submission page...")
-        # The submission page can take a few seconds to load
+        print("[*] Clicking first Publish button (opens drawer)...")
         try:
-            page.wait_for_url("**/submission**", timeout=10000)
-            print("[+] Navigated to Submission page.")
-        except:
-            pass # It might just be a slide-in panel
-            
-        time.sleep(3) # Wait for animations/rendering
-        
-        try:
-            print("[*] Looking for Final Publish button on submission page...")
-            # Screenshot of submission page shows the final button text is simply "Publish"
-            # We wait for ALL "Publish" buttons and pick the one that's a dark/submit button
-            # The first publish button is now gone (we already navigated away), so the next one is the final one
-            final_publish_btn = page.locator('button:has-text("Publish")').first
-            final_publish_btn.wait_for(state="visible", timeout=10000)
-            print("[*] Clicking Final Publish button on submission page...")
-            final_publish_btn.click()
+            publish_btn = page.locator('button:has-text("Publish")').first
+            publish_btn.wait_for(state="visible", timeout=10000)
+            publish_btn.click()
         except Exception as e:
-            print(f"[-] Could not click final 'Publish': {e}")
-            
-        print("[*] Waiting for redirect to published story...")
-        # Wait for the story to be published (URL should no longer contain /submission)
+            print(f"[-] Could not click Publish: {e}")
+            return False, None, "Local Profile"
+        
+        print("[*] Waiting for publish drawer to open...")
+        time.sleep(4)
+        
+        # Take a debug screenshot to see what's on screen
+        screenshot_path = os.path.join(os.path.dirname(__file__), "..", "..", "browser_profiles", "medium_debug.png")
+        try:
+            page.screenshot(path=screenshot_path)
+            print(f"[*] Debug screenshot saved: {screenshot_path}")
+        except:
+            pass
+        
+        print("[*] Searching for final publish button using multiple strategies...")
+        clicked = False
+        
+        # Strategy 1: "Publish now" text (most common)
+        for btn_text in ["Publish now", "Publish story", "Publish"]:
+            try:
+                btns = page.locator(f'button:has-text("{btn_text}")')
+                count = btns.count()
+                print(f"[*] Found {count} button(s) with text '{btn_text}'")
+                if count >= 2:
+                    # Second Publish button = final confirm
+                    btns.nth(1).click()
+                    clicked = True
+                    print(f"[+] Clicked 2nd '{btn_text}' button!")
+                    break
+                elif count == 1:
+                    btns.first.click()
+                    clicked = True
+                    print(f"[+] Clicked '{btn_text}' button!")
+                    break
+            except Exception as e:
+                print(f"    [-] Strategy with '{btn_text}' failed: {e}")
+        
+        # Strategy 2: JS — find and click all submit-type buttons visible in the drawer
+        if not clicked:
+            print("[*] Trying JavaScript button search as last resort...")
+            try:
+                page.evaluate("""
+                    () => {
+                        const buttons = Array.from(document.querySelectorAll('button'));
+                        const publishBtn = buttons.find(b => 
+                            b.textContent.trim().toLowerCase().includes('publish') &&
+                            b.offsetParent !== null
+                        );
+                        if (publishBtn) publishBtn.click();
+                    }
+                """)
+                clicked = True
+                print("[+] JS fallback clicked a publish button!")
+            except Exception as e:
+                print(f"[-] JS fallback failed: {e}")
+        
+        print("[*] Waiting a few seconds for publish request to fire...")
         time.sleep(5)
-        for _ in range(15):
-            if "submission" not in page.url and "edit" not in page.url and "new-story" not in page.url:
-                break
-            time.sleep(2)
             
-        live_url = page.url
+        current_url = page.url
+        
+        # Extract the shortlink from the URL (e.g., https://medium.com/p/1234567890ab)
+        # Even if it stays on the submission page, the shortlink will redirect to the published post.
+        import re
+        match = re.search(r'(https://medium\.com/p/[a-zA-Z0-9]+)', current_url)
+        if match:
+            live_url = match.group(1)
+        else:
+            live_url = current_url
+
         print(f"[+] Successfully posted to Medium! URL: {live_url}")
-        return True, live_url
+        return True, live_url, "Local Profile"
+

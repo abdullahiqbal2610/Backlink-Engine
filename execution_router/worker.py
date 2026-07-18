@@ -50,6 +50,37 @@ def mark_thread_status(thread_id: str, status: str):
     except Exception as e:
         print(f"[-] DB Error updating status: {e}")
 
+def log_to_google_sheet(platform: str, live_url: str, account_used: str):
+    sheet_id = os.getenv("GOOGLE_SHEET_ID")
+    if not sheet_id:
+        return
+        
+    try:
+        import gspread
+        from google.oauth2.service_account import Credentials
+        from datetime import datetime
+        
+        creds_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'gcp_credentials.json')
+        if not os.path.exists(creds_path):
+            print("    [-] gcp_credentials.json not found. Skipping Google Sheet log.")
+            return
+            
+        scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+        creds = Credentials.from_service_account_file(creds_path, scopes=scopes)
+        client = gspread.authorize(creds)
+        
+        sheet = client.open_by_key(sheet_id).sheet1
+        
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Headings: Timestamp, Platform, Live URL, Account Used
+        row_data = [timestamp, platform, live_url or "Draft Saved", account_used]
+        sheet.append_row(row_data)
+        print(f"    [+] Logged successfully to Google Sheets!")
+        
+    except Exception as e:
+        print(f"    [-] Failed to log to Google Sheets: {e}")
+
 
 def main():
     print("=== Execution Router Worker ===")
@@ -93,12 +124,28 @@ def main():
 
             result = poster.post(url, final_comment)
             
-            # Handle both old (bool) and new (tuple) return types during migration
+            # Handle both old (bool), new (tuple of 2), and newest (tuple of 3) return types during migration
             if isinstance(result, tuple):
-                success, live_url = result
+                if len(result) == 3:
+                    success, live_url, account_used = result
+                else:
+                    success, live_url = result
+                    account_used = "Auto-rotated"
             else:
                 success = result
                 live_url = None
+                account_used = "Auto-rotated"
+
+            # Fallback: Try to extract username from URL if it's "Auto-rotated"
+            if account_used == "Auto-rotated" and live_url:
+                if "dev.to/" in live_url:
+                    parts = live_url.split("dev.to/")
+                    if len(parts) > 1:
+                        account_used = "@" + parts[1].split("/")[0]
+                elif "medium.com/" in live_url:
+                    parts = live_url.split("medium.com/")
+                    if len(parts) > 1 and parts[1].startswith("@"):
+                        account_used = parts[1].split("/")[0]
 
             if success:
                 print(f"[+] Successfully posted to {platform}!")
@@ -115,6 +162,10 @@ def main():
                         conn.commit()
                         conn.close()
                         print(f"    [+] Saved live URL: {live_url}")
+                        
+                        # Log to Google Sheets
+                        log_to_google_sheet(platform, live_url, account_used)
+                        
                     except Exception as e:
                         print(f"    [-] Failed to save post_result to DB: {e}")
                 

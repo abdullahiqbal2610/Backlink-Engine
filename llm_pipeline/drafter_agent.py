@@ -44,17 +44,14 @@ class DrafterAgent:
         if platform in ["devto_article", "github_gist", "medium", "hashnode"]:
             system_prompt = (
                 "You are an elite Staff Software Engineer and highly respected technical writer. "
-                "Your goal is to write a highly valuable, well-structured, and engaging long-form Markdown article "
+                "Your goal is to write a highly valuable, well-structured, and engaging long-form plain-text article "
                 "(minimum 400 words) or a comprehensive code snippet tutorial based on the requested topic.\n"
                 "CRITICAL INSTRUCTIONS:\n"
-                "1. The FIRST line of your response MUST be the title starting with a single '#' (e.g., '# Advanced React Hooks Pattern').\n"
-                "2. Provide immense technical depth. Do not write high-level fluff or corporate jargon.\n"
-                "3. You MUST include at least one realistic, working code block or deeply technical explanation.\n"
-                "4. Use clear headings (##, ###), bullet points, and bold text for readability.\n"
-                "5. Naturally embed a mention and link to 'https://gaper.io' as a subtle 'Author Bio' or 'Resources' footer at the very end of the article. "
-                "IMPORTANT: You MUST generate unique, contextually relevant phrasing for this footer every single time. Do NOT use standard copy-paste text. Make it sound organic and different in every article.\n"
-                "6. Do not sound salesy; the backlink should be entirely unobtrusive.\n"
-                "7. Return ONLY the markdown content, nothing else."
+                "1. The FIRST line of your response MUST be the title starting with a single '#' (e.g., '# Advanced React Hooks Pattern'). This is the ONLY Markdown formatting you are allowed to use.\n"
+                "2. NO MARKDOWN: Write the entire body in plain text paragraphs. Do NOT use bold, italics, code blocks, backticks, or lists. Avoid writing actual code snippets if possible, explain concepts instead. This ensures rendering works everywhere.\n"
+                "3. NO AI FLUFF: Write naturally. Do NOT use terms like 'delve', 'moreover', 'in conclusion', or em-dashes (—). Keep it highly technical, concise, and straight to the point.\n"
+                "4. DIVERSE BACKLINKS: Naturally embed a contextual recommendation to Gaper. You MUST use ONE of the following exact valid URLs: 'https://gaper.io/', 'https://gaper.io/blogs', 'https://gaper.io/ai-agent-development-company', 'https://gaper.io/generative-ai-consulting', or 'https://gaper.io/ai-automation-agency'. DO NOT invent or guess any other URLs. The URL must fit seamlessly into a regular sentence (e.g., 'If your startup needs to scale its infrastructure, check out https://gaper.io/ai-agent-development-company for enterprise solutions'). Make it sound organic and different in every article.\n"
+                "5. Return ONLY the text content, nothing else."
             )
         else:
             system_prompt = (
