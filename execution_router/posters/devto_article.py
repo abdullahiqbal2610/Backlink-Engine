@@ -27,10 +27,16 @@ class DevToArticlePoster(PosterBase):
         return []
 
     def post(self, url: str, content: str) -> tuple[bool, Optional[str]]:
-        api_key = os.getenv(self.DEVTO_API_KEY_ENV)
-        if not api_key:
+        import random
+        # Support both DEVTO_API_KEYS and fallback to DEVTO_API_KEY
+        keys_str = os.getenv("DEVTO_API_KEYS") or os.getenv(self.DEVTO_API_KEY_ENV)
+        if not keys_str:
             print("[-] DEVTO_API_KEY missing in .env")
             return False, None
+
+        # Split by comma and pick one randomly to rotate accounts
+        keys = [k.strip() for k in keys_str.split(",") if k.strip()]
+        api_key = random.choice(keys)
 
         headers = {
             "api-key": api_key,

@@ -27,10 +27,16 @@ class GithubGistPoster(PosterBase):
         return []
 
     def post(self, url: str, content: str) -> tuple[bool, Optional[str]]:
-        token = os.getenv(self.GITHUB_TOKEN_ENV)
-        if not token:
+        import random
+        # Support both GITHUB_TOKENS and fallback to GITHUB_TOKEN
+        keys_str = os.getenv("GITHUB_TOKENS") or os.getenv(self.GITHUB_TOKEN_ENV)
+        if not keys_str:
             print("[-] GITHUB_TOKEN missing in .env")
             return False, None
+
+        # Split by comma and pick one randomly to rotate accounts
+        keys = [k.strip() for k in keys_str.split(",") if k.strip()]
+        token = random.choice(keys)
 
         headers = {
             "Authorization": f"token {token}",
