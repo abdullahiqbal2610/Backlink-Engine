@@ -1,0 +1,11 @@
+{
+  "thread_id": "uuid-string",
+  "platform": "string",
+  "url": "string",
+  "is_relevant": true,
+  "drafted_comment": "string",
+  "review_status": "pending | approved | rejected | fix",
+  "feedback_note": "string | null",
+  "posting_type": "A | B | C | D | E",
+  "approved_at": "2026-07-12T12:00:00Z"
+}

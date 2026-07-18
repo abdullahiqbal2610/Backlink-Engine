@@ -1,0 +1,73 @@
+"""
+Discovery Engine — Main
+
+Reads RSS/API feeds from all registered platform posters (via DISCOVERY_FEEDS)
+and pushes new threads into the Redis discovery_queue.
+
+Adding a new platform: implement poster.discover_feeds() in its poster class
+and register it in execution_router/posters/__init__.py. Nothing here changes.
+"""
+
+import os
+import sys
+import time
+
+# Allow importing from sibling packages
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from rss_fetcher  import RssFetcher
+from serp_fetcher import SerpFetcher
+from pipeline     import DiscoveryPipeline
+
+# Import aggregated feed list from the poster registry (plug-and-play)
+from execution_router.posters import DISCOVERY_FEEDS
+
+
+def run_discovery():
+    print("=== Starting Discovery Engine ===")
+
+    pipeline = DiscoveryPipeline()
+    rss  = RssFetcher()
+    serp = SerpFetcher()
+
+    # ── 1. RSS / API Feed Discovery (auto-aggregated from all poster modules) ──
+    rss_targets = DISCOVERY_FEEDS   # Comes from every platform's discover_feeds()
+
+    print(f"[*] Running RSS discovery across {len(rss_targets)} feed(s)...")
+
+    # TEMPORARILY DISABLED to prioritize SERP high-value targets
+    # for target in rss_targets:
+    #     if target.get("scrape_type", 1) == 1:
+    #         items = rss.fetch_feed(target["url"])
+    #         for item in items:
+    #             pipeline.process_item(item, platform=target["platform"], scrape_type=1)
+
+    # ── 2. SERP / Dork Discovery (manually curated high-value queries) ──
+    serp_targets = [
+        # Dev.to Article Targets (trending software architecture/Python queries)
+        {"site": "stackoverflow.com",        "keyword": "python microservices architecture best practices", "platform": "devto_article", "scrape_type": 2},
+        {"site": "news.ycombinator.com",     "keyword": "fastapi vs django performance 2027",               "platform": "devto_article", "scrape_type": 2},
+        
+        # GitHub Gist Targets (code-snippet heavy queries)
+        {"site": "stackoverflow.com",        "keyword": "python asyncio rate limiter decorator example",    "platform": "github_gist",   "scrape_type": 2},
+        {"site": "news.ycombinator.com",     "keyword": "python clean architecture repository pattern",     "platform": "github_gist",   "scrape_type": 2},
+        
+        # Medium Targets (thought leadership)
+        {"site": "news.ycombinator.com",     "keyword": "how AI replaces software engineers 2026",          "platform": "medium",        "scrape_type": 2},
+        {"site": "reddit.com/r/programming", "keyword": "future of web development frameworks",             "platform": "medium",        "scrape_type": 2},
+    ]
+
+    print(f"[*] Running SERP discovery across {len(serp_targets)} query target(s)...")
+
+    for target in serp_targets:
+        query = serp.generate_dork(target["site"], target["keyword"])
+        items = serp.fetch_results(query, max_results=5)
+        for item in items:
+            pipeline.process_item(item, platform=target["platform"], scrape_type=target["scrape_type"])
+
+    pipeline.close()
+    print("=== Discovery Engine Run Complete ===")
+
+
+if __name__ == "__main__":
+    run_discovery()

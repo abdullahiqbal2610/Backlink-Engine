@@ -1,0 +1,10 @@
+{
+  "thread_id": "uuid-string",
+  "platform": "string",
+  "url": "string",
+  "post_status": "success | failed | retry",
+  "posted_at": "2026-07-12T13:00:00Z",
+  "post_url": "https://...",
+  "error": "string | null",
+  "retry_count": 0
+}

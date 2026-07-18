@@ -1,0 +1,13 @@
+{
+  "thread_id": "uuid-string",
+  "platform": "reddit | quora | forum | linkedin | other",
+  "url": "https://...",
+  "title": "string",
+  "body": "string",
+  "author": "string",
+  "posted_at": "2026-07-12T10:00:00Z",
+  "scraped_at": "2026-07-12T10:05:00Z",
+  "scrape_type": 1,
+  "community_guidelines": "string | null",
+  "guidelines_version": "string | null"
+}

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gaper.io | AI Review Panel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-circle"></div>
+                <h2>Gaper.io</h2>
+            </div>
+            
+            <div class="system-status">
+                <h3 class="status-title">System Status</h3>
+                <div class="status-item">
+                    <div class="status-dot green"></div>
+                    <span>Discovery Engine</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot green"></div>
+                    <span>LLM Pipeline</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot red" id="router-status-dot"></div>
+                    <span id="router-status-text">Router Offline</span>
+                </div>
+                <p class="status-hint">Run <code>python execution_router/worker.py</code> to start posting.</p>
+            </div>
+
+            <nav class="menu">
+                <a href="#" class="menu-item active" id="nav-pending">Pending Reviews</a>
+                <a href="#" class="menu-item" id="nav-published">Live Backlinks <span class="badge new-badge">NEW</span></a>
+                <a href="#" class="menu-item" onclick="alert('Approved view is coming soon in Phase 6!'); return false;">Approved</a>
+                <a href="#" class="menu-item" onclick="alert('Rejected view is coming soon in Phase 6!'); return false;">Rejected</a>
+                <a href="#" class="menu-item" onclick="alert('Analytics Dashboard is coming soon in Phase 6!'); return false;">Analytics</a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header id="main-header">
+                <div>
+                    <h1 id="page-title">AI Draft Reviews</h1>
+                    <p class="subtitle" id="page-subtitle">Review, edit, and approve AI-generated drafts before they are published.</p>
+                </div>
+                <div class="stats" id="header-stats">
+                    <span class="stat-badge"><span id="pending-count">0</span> Pending</span>
+                </div>
+            </header>
+
+            <div class="cards-container" id="cards-container">
+                <!-- Cards will be injected here via JS -->
+                <div class="loading" id="loading-state">
+                    <div class="spinner"></div>
+                    <p>Loading drafts...</p>
+                </div>
+            </div>
+
+            <!-- Published Links Container -->
+            <div class="cards-container hidden" id="published-container">
+                <div class="published-grid" id="published-grid">
+                    <!-- Published items injected here via JS -->
+                </div>
+                <div class="loading hidden" id="published-loading">
+                    <div class="spinner"></div>
+                    <p>Loading live backlinks...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

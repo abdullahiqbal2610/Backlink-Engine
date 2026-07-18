@@ -1,0 +1,60 @@
+import os
+import chromadb
+from chromadb.config import Settings
+
+class RagStore:
+    def __init__(self):
+        # We will use an in-memory or simple local persistent chroma db for now.
+        persist_directory = os.path.join(os.path.dirname(__file__), "chroma_db")
+        
+        # Simple client for testing
+        self.client = chromadb.PersistentClient(
+            path=persist_directory,
+            settings=Settings(anonymized_telemetry=False)
+        )
+        self.collection = self.client.get_or_create_collection(name="gaper_knowledge_base")
+        
+        # Seed dummy data if empty
+        if self.collection.count() == 0:
+            self._seed_dummy_data()
+            
+    def _seed_dummy_data(self):
+        print("[*] Scraping Gaper.io for live RAG knowledge base...")
+        try:
+            from gaper_scraper import scrape_gaper_io
+            documents = scrape_gaper_io()
+            if documents:
+                ids = [f"gaper_doc_{i}" for i in range(len(documents))]
+                self.collection.add(documents=documents, ids=ids)
+                print(f"[+] Added {len(documents)} real paragraphs to ChromaDB.")
+            else:
+                print("[-] Scraping returned no data. Using fallback data.")
+                self._fallback_data()
+        except Exception as e:
+            print(f"[-] Failed to scrape gaper.io during RAG seed: {e}")
+            self._fallback_data()
+            
+    def _fallback_data(self):
+        documents = [
+            "Gaper is the AI-native implementation partner. We build AI agents and optimize workflows.",
+            "Gaper connects startups with top-tier AI engineering talent and automation experts."
+        ]
+        ids = ["fallback_1", "fallback_2"]
+        self.collection.add(documents=documents, ids=ids)
+        
+    def retrieve_context(self, query: str, n_results: int = 2) -> str:
+        """Retrieves relevant context for the given query from the Vector DB."""
+        results = self.collection.query(
+            query_texts=[query],
+            n_results=n_results
+        )
+        
+        if results and results["documents"]:
+            # Combine the returned chunks into a single string
+            return "\n\n".join(results["documents"][0])
+        return ""
+
+if __name__ == "__main__":
+    store = RagStore()
+    ctx = store.retrieve_context("What does gaper do?")
+    print("Retrieved Context:\n", ctx)
