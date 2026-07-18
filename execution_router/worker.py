@@ -75,7 +75,13 @@ def log_to_google_sheet(platform: str, live_url: str, account_used: str):
         
         # Headings: Timestamp, Platform, Live URL, Account Used
         row_data = [timestamp, platform, live_url or "Draft Saved", account_used]
-        sheet.append_row(row_data)
+        
+        # To avoid shifting when user adds other tables (like Tally) to the right,
+        # explicitly find the next empty row based ONLY on Column A
+        col_values = sheet.col_values(1)
+        next_row = len(col_values) + 1
+        sheet.update(values=[row_data], range_name=f"A{next_row}:D{next_row}")
+        
         print(f"    [+] Logged successfully to Google Sheets!")
         
     except Exception as e:

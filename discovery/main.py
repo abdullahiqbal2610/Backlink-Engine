@@ -44,24 +44,33 @@ def run_discovery():
 
     # ── 2. SERP / Dork Discovery (manually curated high-value queries) ──
     serp_targets = [
-        # Dev.to Article Targets (trending software architecture/Python queries)
+        # Dev.to Article Targets
         {"site": "stackoverflow.com",        "keyword": "python microservices architecture best practices", "platform": "devto_article", "scrape_type": 2},
         {"site": "news.ycombinator.com",     "keyword": "fastapi vs django performance 2027",               "platform": "devto_article", "scrape_type": 2},
+        {"site": "reddit.com/r/webdev",      "keyword": "how to implement robust authentication in Next.js", "platform": "devto_article", "scrape_type": 2},
+        {"site": "stackoverflow.com",        "keyword": "designing scalable REST APIs",                     "platform": "devto_article", "scrape_type": 2},
+        {"site": "news.ycombinator.com",     "keyword": "optimizing postgres database queries",             "platform": "devto_article", "scrape_type": 2},
         
-        # GitHub Gist Targets (code-snippet heavy queries)
+        # GitHub Gist Targets
         {"site": "stackoverflow.com",        "keyword": "python asyncio rate limiter decorator example",    "platform": "github_gist",   "scrape_type": 2},
         {"site": "news.ycombinator.com",     "keyword": "python clean architecture repository pattern",     "platform": "github_gist",   "scrape_type": 2},
+        {"site": "stackoverflow.com",        "keyword": "react custom hook for localstorage syncing",       "platform": "github_gist",   "scrape_type": 2},
+        {"site": "reddit.com/r/programming", "keyword": "golang concurrent worker pool implementation",     "platform": "github_gist",   "scrape_type": 2},
+        {"site": "stackoverflow.com",        "keyword": "docker compose local development setup for nodejs", "platform": "github_gist",   "scrape_type": 2},
         
-        # Medium Targets (thought leadership)
+        # Medium Targets
         {"site": "news.ycombinator.com",     "keyword": "how AI replaces software engineers 2026",          "platform": "medium",        "scrape_type": 2},
         {"site": "reddit.com/r/programming", "keyword": "future of web development frameworks",             "platform": "medium",        "scrape_type": 2},
+        {"site": "news.ycombinator.com",     "keyword": "why we moved from microservices back to monolith", "platform": "medium",        "scrape_type": 2},
+        {"site": "reddit.com/r/SaaS",        "keyword": "building an AI agent for customer support",        "platform": "medium",        "scrape_type": 2},
+        {"site": "news.ycombinator.com",     "keyword": "the real cost of cloud infrastructure in 2025",    "platform": "medium",        "scrape_type": 2},
     ]
 
     print(f"[*] Running SERP discovery across {len(serp_targets)} query target(s)...")
 
     for target in serp_targets:
         query = serp.generate_dork(target["site"], target["keyword"])
-        items = serp.fetch_results(query, max_results=5)
+        items = serp.fetch_results(query, max_results=10)
         for item in items:
             pipeline.process_item(item, platform=target["platform"], scrape_type=target["scrape_type"])
 

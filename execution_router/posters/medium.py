@@ -191,13 +191,18 @@ class MediumPoster(PosterBase):
         current_url = page.url
         
         # Extract the shortlink from the URL (e.g., https://medium.com/p/1234567890ab)
-        # Even if it stays on the submission page, the shortlink will redirect to the published post.
         import re
         match = re.search(r'(https://medium\.com/p/[a-zA-Z0-9]+)', current_url)
         if match:
             live_url = match.group(1)
         else:
             live_url = current_url
+            
+        # If it's still clearly an edit page and never reached submission or publish, it failed.
+        if "/edit" in current_url and not clicked:
+            print(f"[-] URL still shows editor and no publish button was clicked: {current_url}")
+            print("[-] Publishing definitely failed. Check debug screenshot.")
+            return False, live_url, "Local Profile"
 
         print(f"[+] Successfully posted to Medium! URL: {live_url}")
         return True, live_url, "Local Profile"
