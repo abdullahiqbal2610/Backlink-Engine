@@ -13,15 +13,18 @@ A fully autonomous, AI-driven engine for generating high-quality backlinks and e
   - Automatically posts drafted content to target platforms.
   - Supports **Type A** (API-based) platforms like Dev.to and GitHub Gists.
   - Supports **Type B** (Browser-based) platforms like Medium using Playwright Stealth.
-- **Admin Dashboard**: Next.js-based dashboard to manually review and approve drafts before posting (when not in full autonomous mode).
-- **Autonomous Mode**: A single flip-switch in `.env` to go full autopilot.
+- **Admin Dashboard**: Fast API/Next.js-based dashboard to manually review and approve drafts, view historical posts, monitor system health, and track real-time analytics with Chart.js.
+- **Autonomous Mode**: A single flip-switch in the dashboard UI (or `.env`) to go full autopilot.
+- **Google Sheets Integration**: Automatically logs every successfully published backlink in real-time, extracting the exact live URL and the account used to post it.
+- **Smart Contextual Backlinks**: Dynamically embeds diverse `gaper.io` URLs (`/blogs`, `/ai-agent-development-company`, etc.) organically within plain-text technical content to bypass spam filters and maximize SEO footprint.
 
 ## 🛠️ Architecture
 
 - **PostgreSQL**: Stores persistent state for threads, platforms, and results.
 - **Redis**: Handles task queues (`discovery_queue`, `review_queue`, `posting_queue`) for asynchronous execution.
 - **ChromaDB**: Vector database for RAG context retrieval.
-- **Playwright**: Automates browser sessions with stealth plugins for strict platforms.
+- **Playwright**: Automates browser sessions with stealth plugins for strict platforms, featuring robust slide-in drawer and Javascript fallback selectors.
+- **Google Sheets API**: Uses service account credentials for seamless background tracking.
 
 ## 🚀 Getting Started
 
