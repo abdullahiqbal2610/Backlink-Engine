@@ -1,35 +1,81 @@
 document.addEventListener('DOMContentLoaded', () => {
     fetchReviews();
+    checkAutonomousStatus();
+    pollSystemHealth();
+    setInterval(pollSystemHealth, 10000);
     
-    // Tab switching logic
+    // Autonomous Toggle logic
+    document.getElementById('autonomous-toggle').addEventListener('change', async (e) => {
+        const isEnabled = e.target.checked;
+        try {
+            const res = await fetch('/api/autonomous/toggle', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({enabled: isEnabled})
+            });
+            if (!res.ok) throw new Error('Toggle failed');
+        } catch (error) {
+            console.error('Error toggling autonomous mode:', error);
+            e.target.checked = !isEnabled; // revert UI on failure
+            alert('Failed to switch Autonomous mode.');
+        }
+    });
+
+    // Tab switching helper
+    const tabs = ['pending', 'published', 'approved', 'rejected', 'analytics'];
+    function switchTab(activeTabId) {
+        tabs.forEach(t => {
+            document.getElementById(`nav-${t}`).classList.remove('active');
+            const container = document.getElementById(t === 'pending' ? 'cards-container' : `${t}-container`);
+            if(container) container.classList.add('hidden');
+        });
+        
+        document.getElementById(`nav-${activeTabId}`).classList.add('active');
+        const activeContainer = document.getElementById(activeTabId === 'pending' ? 'cards-container' : `${activeTabId}-container`);
+        if(activeContainer) activeContainer.classList.remove('hidden');
+        document.getElementById('header-stats').style.display = activeTabId === 'pending' ? 'block' : 'none';
+    }
+
     document.getElementById('nav-pending').addEventListener('click', (e) => {
         e.preventDefault();
-        document.getElementById('nav-pending').classList.add('active');
-        document.getElementById('nav-published').classList.remove('active');
-        
-        document.getElementById('cards-container').classList.remove('hidden');
-        document.getElementById('published-container').classList.add('hidden');
-        
+        switchTab('pending');
         document.getElementById('page-title').textContent = 'AI Draft Reviews';
         document.getElementById('page-subtitle').textContent = 'Review, edit, and approve AI-generated drafts before they are published.';
-        document.getElementById('header-stats').style.display = 'block';
-        
         fetchReviews();
     });
 
     document.getElementById('nav-published').addEventListener('click', (e) => {
         e.preventDefault();
-        document.getElementById('nav-published').classList.add('active');
-        document.getElementById('nav-pending').classList.remove('active');
-        
-        document.getElementById('published-container').classList.remove('hidden');
-        document.getElementById('cards-container').classList.add('hidden');
-        
+        switchTab('published');
         document.getElementById('page-title').textContent = 'Live Backlinks';
         document.getElementById('page-subtitle').textContent = 'Successfully published articles and comments across all platforms.';
-        document.getElementById('header-stats').style.display = 'none';
-        
         fetchPublishedLinks();
+    });
+    
+    document.getElementById('nav-approved').addEventListener('click', (e) => {
+        e.preventDefault();
+        switchTab('history'); // We reuse history container
+        document.getElementById('nav-approved').classList.add('active');
+        document.getElementById('page-title').textContent = 'Approved History';
+        document.getElementById('page-subtitle').textContent = 'Drafts that were approved and sent to the posting queue.';
+        fetchHistory('approved');
+    });
+
+    document.getElementById('nav-rejected').addEventListener('click', (e) => {
+        e.preventDefault();
+        switchTab('history');
+        document.getElementById('nav-rejected').classList.add('active');
+        document.getElementById('page-title').textContent = 'Rejected History';
+        document.getElementById('page-subtitle').textContent = 'Drafts that were rejected and archived.';
+        fetchHistory('rejected');
+    });
+
+    document.getElementById('nav-analytics').addEventListener('click', (e) => {
+        e.preventDefault();
+        switchTab('analytics');
+        document.getElementById('page-title').textContent = 'Analytics Dashboard';
+        document.getElementById('page-subtitle').textContent = 'High-level metrics on AI generation and publication success.';
+        fetchAnalytics();
     });
 });
 
@@ -191,5 +237,142 @@ async function handleAction(threadId, action) {
         alert('Network error. Please try again.');
         card.style.opacity = '1';
         card.style.pointerEvents = 'auto';
+    }
+}
+
+async function checkAutonomousStatus() {
+    try {
+        const res = await fetch('/api/autonomous/status');
+        const data = await res.json();
+        document.getElementById('autonomous-toggle').checked = data.enabled;
+    } catch(e) {
+        console.error("Failed to fetch autonomous status", e);
+    }
+}
+
+async function pollSystemHealth() {
+    try {
+        const res = await fetch('/api/health');
+        const health = await res.json();
+        
+        const dbDot = document.getElementById('status-db');
+        if (health.postgres) { dbDot.className = 'status-dot green'; } 
+        else { dbDot.className = 'status-dot red'; }
+        
+        const redisDot = document.getElementById('status-redis');
+        if (health.redis) { redisDot.className = 'status-dot green'; } 
+        else { redisDot.className = 'status-dot red'; }
+        
+    } catch (error) {
+        document.getElementById('status-db').className = 'status-dot red';
+        document.getElementById('status-redis').className = 'status-dot red';
+    }
+}
+
+async function fetchHistory(status) {
+    const grid = document.getElementById('history-grid');
+    const loading = document.getElementById('history-loading');
+    
+    grid.innerHTML = '';
+    loading.classList.remove('hidden');
+    
+    try {
+        const response = await fetch(`/api/history/${status}`);
+        const data = await response.json();
+        const items = data.history || [];
+        
+        loading.classList.add('hidden');
+        
+        if (items.length === 0) {
+            grid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 3rem; color: #8b92a5;">No ${status} items found.</div>`;
+            return;
+        }
+
+        items.forEach((item, index) => {
+            const card = document.createElement('div');
+            card.className = 'review-card';
+            card.style.animationDelay = `${index * 0.05}s`;
+            
+            const date = item.updated_at ? new Date(item.updated_at).toLocaleString() : 'N/A';
+            const statusColor = status === 'approved' ? '#10b981' : '#ef4444';
+            
+            card.innerHTML = `
+                <div class="card-header">
+                    <span class="platform-badge">${item.platform}</span>
+                    <span style="color: ${statusColor}; font-weight: bold; text-transform: capitalize;">${status}</span>
+                </div>
+                <div style="padding: 1rem 0;">
+                    <h4 style="margin:0 0 0.5rem 0; color: #fff;">${item.title || 'Untitled Post'}</h4>
+                    <p style="color: #8b92a5; font-size: 0.8rem; margin-bottom: 0.5rem;">Updated: ${date}</p>
+                    <a href="${item.url}" target="_blank" class="thread-link" style="font-size: 0.8rem;">Original Source ↗</a>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+
+    } catch (error) {
+        console.error('Error:', error);
+        loading.classList.add('hidden');
+        grid.innerHTML = '<p style="color: #ef4444;">Failed to load history.</p>';
+    }
+}
+
+let platformChartInstance = null;
+
+async function fetchAnalytics() {
+    try {
+        const res = await fetch('/api/analytics');
+        const stats = await res.json();
+        
+        document.getElementById('stat-discovered').textContent = stats.total_discovered || 0;
+        document.getElementById('stat-approved').textContent = stats.total_approved || 0;
+        document.getElementById('stat-rejected').textContent = stats.total_rejected || 0;
+        document.getElementById('stat-published').textContent = stats.total_published || 0;
+        
+        // Render Chart
+        const ctx = document.getElementById('platformChart').getContext('2d');
+        
+        const labels = Object.keys(stats.platform_breakdown || {});
+        const data = Object.values(stats.platform_breakdown || {});
+        
+        if (platformChartInstance) {
+            platformChartInstance.destroy();
+        }
+        
+        platformChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels.length > 0 ? labels : ['No Data'],
+                datasets: [{
+                    label: 'Successful Posts by Platform',
+                    data: data.length > 0 ? data : [0],
+                    backgroundColor: 'rgba(139, 92, 246, 0.5)',
+                    borderColor: 'rgba(139, 92, 246, 1)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#f3f4f6' } }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: '#9ca3af', stepSize: 1 },
+                        grid: { color: 'rgba(255,255,255,0.05)' }
+                    },
+                    x: {
+                        ticks: { color: '#9ca3af' },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+        
+    } catch(e) {
+        console.error("Failed to load analytics", e);
     }
 }

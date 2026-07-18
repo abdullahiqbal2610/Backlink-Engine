@@ -8,9 +8,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 from pydantic import BaseModel
-from dotenv import load_dotenv
+from dotenv import load_dotenv, set_key
 
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
+dotenv_path = os.path.join(os.path.dirname(__file__), '..', '.env')
+load_dotenv(dotenv_path=dotenv_path)
 
 app = FastAPI(title="Gaper Intern Panel Review")
 
@@ -38,6 +39,39 @@ class ReviewAction(BaseModel):
     thread_id: str
     final_comment: str
     feedback: Optional[str] = None
+
+class ToggleAction(BaseModel):
+    enabled: bool
+
+@app.get("/api/health")
+def health_check():
+    health = {"redis": False, "postgres": False}
+    try:
+        r.ping()
+        health["redis"] = True
+    except:
+        pass
+        
+    try:
+        conn = get_db_connection()
+        conn.close()
+        health["postgres"] = True
+    except:
+        pass
+        
+    return health
+
+@app.get("/api/autonomous/status")
+def get_autonomous_status():
+    status = os.getenv("AUTONOMOUS_MODE", "false").lower() == "true"
+    return {"enabled": status}
+
+@app.post("/api/autonomous/toggle")
+def toggle_autonomous(action: ToggleAction):
+    val = "true" if action.enabled else "false"
+    set_key(dotenv_path, "AUTONOMOUS_MODE", val)
+    os.environ["AUTONOMOUS_MODE"] = val
+    return {"status": "success", "enabled": action.enabled}
 
 @app.get("/api/reviews")
 def get_reviews():
@@ -158,6 +192,81 @@ def get_published_links():
         return {"status": "error", "message": str(e)}
         
     return {"published": results}
+
+@app.get("/api/history/{status}")
+def get_history(status: str):
+    """Fetch history of approved or rejected threads"""
+    if status not in ["approved", "rejected"]:
+        raise HTTPException(status_code=400, detail="Invalid status")
+        
+    results = []
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT title, url, platform, updated_at 
+                FROM threads 
+                WHERE status = %s
+                ORDER BY updated_at DESC
+                LIMIT 50
+            """, (status,))
+            rows = cur.fetchall()
+            for row in rows:
+                results.append({
+                    "title": row[0],
+                    "url": row[1],
+                    "platform": row[2],
+                    "updated_at": row[3].isoformat() if row[3] else None
+                })
+        conn.close()
+    except Exception as e:
+        print(f"DB Error fetching history: {e}")
+        return {"status": "error", "message": str(e)}
+        
+    return {"history": results}
+
+@app.get("/api/analytics")
+def get_analytics():
+    """Fetch high-level analytics for the dashboard"""
+    stats = {
+        "total_discovered": 0,
+        "total_approved": 0,
+        "total_rejected": 0,
+        "total_published": 0,
+        "platform_breakdown": {}
+    }
+    
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            # Basic counts
+            cur.execute("SELECT status, COUNT(*) FROM threads GROUP BY status")
+            for row in cur.fetchall():
+                if row[0] == "approved": stats["total_approved"] = row[1]
+                elif row[0] == "rejected": stats["total_rejected"] = row[1]
+                stats["total_discovered"] += row[1]
+                
+            # Published count
+            cur.execute("SELECT COUNT(*) FROM post_results WHERE post_status = 'success'")
+            stats["total_published"] = cur.fetchone()[0]
+            
+            # Platform breakdown for published
+            cur.execute("""
+                SELECT t.platform, COUNT(*) 
+                FROM post_results p 
+                JOIN threads t ON p.thread_id = t.thread_id 
+                WHERE p.post_status = 'success' 
+                GROUP BY t.platform
+            """)
+            for row in cur.fetchall():
+                stats["platform_breakdown"][row[0]] = row[1]
+                
+        conn.close()
+    except Exception as e:
+        print(f"DB Error fetching analytics: {e}")
+        return {"status": "error", "message": str(e)}
+        
+    return stats
 
 # Mount static files for the frontend
 static_dir = os.path.join(os.path.dirname(__file__), "static")

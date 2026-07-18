@@ -6,6 +6,7 @@
     <title>Gaper.io | AI Review Panel</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -19,14 +20,23 @@
             <div class="system-status">
                 <h3 class="status-title">System Status</h3>
                 <div class="status-item">
-                    <div class="status-dot green"></div>
-                    <span>Discovery Engine</span>
+                    <div class="status-dot red" id="status-db"></div>
+                    <span>PostgreSQL</span>
                 </div>
                 <div class="status-item">
-                    <div class="status-dot green"></div>
-                    <span>LLM Pipeline</span>
+                    <div class="status-dot red" id="status-redis"></div>
+                    <span>Redis Cache</span>
                 </div>
-                <div class="status-item">
+                
+                <div class="autonomous-toggle-container">
+                    <span style="font-size: 0.9rem; font-weight: 500; color:#fff;">Autopilot Mode</span>
+                    <label class="switch">
+                        <input type="checkbox" id="autonomous-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                
+                <div class="status-item" style="margin-top: 1.5rem;">
                     <div class="status-dot red" id="router-status-dot"></div>
                     <span id="router-status-text">Router Offline</span>
                 </div>
@@ -35,10 +45,10 @@
 
             <nav class="menu">
                 <a href="#" class="menu-item active" id="nav-pending">Pending Reviews</a>
-                <a href="#" class="menu-item" id="nav-published">Live Backlinks <span class="badge new-badge">NEW</span></a>
-                <a href="#" class="menu-item" onclick="alert('Approved view is coming soon in Phase 6!'); return false;">Approved</a>
-                <a href="#" class="menu-item" onclick="alert('Rejected view is coming soon in Phase 6!'); return false;">Rejected</a>
-                <a href="#" class="menu-item" onclick="alert('Analytics Dashboard is coming soon in Phase 6!'); return false;">Analytics</a>
+                <a href="#" class="menu-item" id="nav-published">Live Backlinks</a>
+                <a href="#" class="menu-item" id="nav-approved">Approved History</a>
+                <a href="#" class="menu-item" id="nav-rejected">Rejected History</a>
+                <a href="#" class="menu-item" id="nav-analytics">Analytics Dashboard</a>
             </nav>
         </aside>
 
@@ -64,12 +74,42 @@
 
             <!-- Published Links Container -->
             <div class="cards-container hidden" id="published-container">
-                <div class="published-grid" id="published-grid">
-                    <!-- Published items injected here via JS -->
-                </div>
+                <div class="published-grid" id="published-grid"></div>
                 <div class="loading hidden" id="published-loading">
-                    <div class="spinner"></div>
-                    <p>Loading live backlinks...</p>
+                    <div class="spinner"></div><p>Loading live backlinks...</p>
+                </div>
+            </div>
+
+            <!-- History Container (Approved/Rejected) -->
+            <div class="cards-container hidden" id="history-container">
+                <div class="published-grid" id="history-grid"></div>
+                <div class="loading hidden" id="history-loading">
+                    <div class="spinner"></div><p>Loading history...</p>
+                </div>
+            </div>
+
+            <!-- Analytics Container -->
+            <div class="cards-container hidden" id="analytics-container">
+                <div class="analytics-grid">
+                    <div class="stat-card">
+                        <h3>Total Discovered</h3>
+                        <p id="stat-discovered" class="stat-value">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Approved</h3>
+                        <p id="stat-approved" class="stat-value" style="color: #10b981;">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Rejected</h3>
+                        <p id="stat-rejected" class="stat-value" style="color: #ef4444;">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Live Backlinks</h3>
+                        <p id="stat-published" class="stat-value" style="color: #3b82f6;">0</p>
+                    </div>
+                </div>
+                <div class="chart-container" style="margin-top: 2rem; background: #1a1f2e; padding: 2rem; border-radius: 12px; border: 1px solid #2d3748;">
+                    <canvas id="platformChart" height="100"></canvas>
                 </div>
             </div>
         </main>
