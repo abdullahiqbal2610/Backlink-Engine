@@ -166,7 +166,13 @@ function createCard(review, index) {
         </div>
         
         <div class="draft-section">
-            <div class="draft-label">AI Drafted Comment</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                <div class="draft-label" style="margin-bottom: 0;">AI Drafted Comment</div>
+                <button onclick="openFullView('${review.thread_id}')" style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2); color: #38bdf8; padding: 0.3rem 0.8rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+                    Full View
+                </button>
+            </div>
             <textarea class="draft-textarea" id="draft-${review.thread_id}">${review.drafted_comment}</textarea>
         </div>
         

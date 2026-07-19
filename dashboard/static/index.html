@@ -115,6 +115,22 @@
         </main>
     </div>
 
+    <!-- Full View Modal -->
+    <div id="fullViewModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Article Full View</h2>
+                <span class="close-modal" onclick="closeFullView()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <textarea id="fullViewTextarea" class="draft-textarea" style="height: 60vh; font-size: 1.1rem; line-height: 1.6;"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-approve" onclick="saveFullView()">Save & Close</button>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>

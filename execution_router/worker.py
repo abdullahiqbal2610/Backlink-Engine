@@ -152,6 +152,10 @@ def main():
                     parts = live_url.split("medium.com/")
                     if len(parts) > 1 and parts[1].startswith("@"):
                         account_used = parts[1].split("/")[0]
+                elif "gist.github.com/" in live_url:
+                    parts = live_url.split("gist.github.com/")
+                    if len(parts) > 1:
+                        account_used = "@" + parts[1].split("/")[0]
 
             if success:
                 print(f"[+] Successfully posted to {platform}!")

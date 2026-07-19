@@ -60,9 +60,18 @@ class DevToArticlePoster(PosterBase):
             }
         }
 
-        print("[*] Submitting article to dev.to API (as Draft)...")
+        print("[*] Submitting article to dev.to API...")
         try:
             resp = requests.post(self.BASE_URL, headers=headers, json=payload, timeout=15)
+            
+            # Handle Rate Limits Gracefully
+            if resp.status_code == 429:
+                print("[-] Dev.to Rate Limit reached (429). Sleeping for 305 seconds to recover...")
+                import time
+                time.sleep(305)
+                print("[*] Retrying Dev.to post after rate limit sleep...")
+                resp = requests.post(self.BASE_URL, headers=headers, json=payload, timeout=15)
+                
             if resp.status_code == 201:
                 data = resp.json()
                 live_url = data.get("url")
