@@ -67,8 +67,8 @@ class LlmWorker:
                     time.sleep(5)
                     continue
             else:
-                if review_queue_size >= 10:
-                    print("\n[!] Review queue reached 10 items. Pausing LLM Pipeline to prevent overload...")
+                if review_queue_size >= 20:
+                    print("\n[!] Review queue reached 20 items. Pausing LLM Pipeline to prevent overload...")
                     is_paused = True
                     continue
 
