@@ -9,6 +9,7 @@ from .github_discussions import GitHubDiscussionsPoster
 from .devto_article    import DevToArticlePoster
 from .github_gist      import GithubGistPoster
 from .medium           import MediumPoster
+from .hashnode         import HashnodePoster
 
 # ============================================================
 # POSTER_REGISTRY: maps platform name -> poster class instance
@@ -23,6 +24,7 @@ POSTER_REGISTRY = {
     "devto_article": DevToArticlePoster(),
     "github_gist":   GithubGistPoster(),
     "medium":        MediumPoster(),
+    "hashnode":      HashnodePoster(),
 }
 
 # ============================================================
@@ -30,5 +32,5 @@ POSTER_REGISTRY = {
 # from every registered poster. Discovery engine reads this.
 # ============================================================
 DISCOVERY_FEEDS = []
-for _poster_class in [RedditPoster, HackerNewsPoster, DevToPoster, IndieHackersPoster, GitHubDiscussionsPoster, DevToArticlePoster, GithubGistPoster]:
+for _poster_class in [RedditPoster, HackerNewsPoster, DevToPoster, IndieHackersPoster, GitHubDiscussionsPoster, DevToArticlePoster, GithubGistPoster, HashnodePoster]:
     DISCOVERY_FEEDS.extend(_poster_class.discover_feeds())

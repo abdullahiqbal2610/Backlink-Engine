@@ -64,6 +64,11 @@ def run_discovery():
         {"site": "news.ycombinator.com",     "keyword": "why we moved from microservices back to monolith", "platform": "medium",        "scrape_type": 2},
         {"site": "reddit.com/r/SaaS",        "keyword": "building an AI agent for customer support",        "platform": "medium",        "scrape_type": 2},
         {"site": "news.ycombinator.com",     "keyword": "the real cost of cloud infrastructure in 2025",    "platform": "medium",        "scrape_type": 2},
+        
+        # Hashnode Targets
+        {"site": "news.ycombinator.com",     "keyword": "scaling postgres database replication",            "platform": "hashnode",      "scrape_type": 2},
+        {"site": "stackoverflow.com",        "keyword": "react server components best practices",           "platform": "hashnode",      "scrape_type": 2},
+        {"site": "reddit.com/r/programming", "keyword": "rust versus go for backend microservices",         "platform": "hashnode",      "scrape_type": 2},
     ]
 
     print(f"[*] Running SERP discovery across {len(serp_targets)} query target(s)...")
