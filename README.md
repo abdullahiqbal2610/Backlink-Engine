@@ -66,10 +66,19 @@ start_all.bat
 Access the Admin Dashboard at: `http://localhost:8000`
 
 ## 🧠 Supported Platforms
+- **Hashnode** (Playwright Stealth - Full article publishing with Drafts Dashboard integration)
 - **Medium** (Playwright Stealth)
 - **Dev.to** (API)
 - **GitHub Gists** (API)
 - **Reddit** (Playwright - Optional)
+
+## 🍪 Cookie Management for Browser Platforms
+For platforms that require browser automation (Hashnode, Medium, Reddit), you must provide session cookies.
+1. Install the **Cookie-Editor** extension (by cgagnier) in Chrome.
+2. Log in to the target platform (e.g., hashnode.com).
+3. Click the extension, click **Export -> Export as JSON**.
+4. Save the copied JSON into the `browser_profiles/` folder (e.g., `browser_profiles/hashnode_cookies.json`).
+If the automation fails with a login redirect error, simply re-export the latest cookies.
 
 ## 🔒 Security
 All browser session cookies and tokens are safely stored in the local `browser_profiles/` directory and are heavily `.gitignore`d. Do not commit these files to version control.
