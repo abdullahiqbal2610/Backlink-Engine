@@ -73,10 +73,10 @@ class GithubGistPoster(PosterBase):
                 data = resp.json()
                 live_url = data.get("html_url")
                 print(f"[+] GitHub Gist created! URL: {live_url}")
-                return True, live_url
+                return True, live_url, "abdullahiqbal2610"
             else:
                 print(f"[-] GitHub API Error: {resp.status_code} - {resp.text}")
-                return False, None
+                return False, None, "N/A"
         except Exception as e:
             print(f"[-] Exception calling GitHub API: {e}")
-            return False, None
+            return False, None, "N/A"

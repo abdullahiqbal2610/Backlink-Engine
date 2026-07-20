@@ -97,13 +97,31 @@ class HashnodePoster(PosterBase):
                     browser.close()
                     return False, None, "N/A"
 
-                if page.url.rstrip("/").endswith("drafts"):
+                if "/drafts" in page.url:
                     print("[*] Landed on drafts dashboard. Clicking 'New' button to open editor...")
                     try:
-                        new_btn = page.locator('a:has-text("New"), button:has-text("New")').first
-                        new_btn.wait_for(state="visible", timeout=10000)
-                        new_btn.click()
-                        time.sleep(4)
+                        time.sleep(3)
+                        try:
+                            # Try Playwright's get_by_text with exact match
+                            new_btn = page.get_by_text("New", exact=True).first
+                            new_btn.wait_for(state="visible", timeout=5000)
+                            new_btn.click()
+                        except:
+                            print("[*] Falling back to JS click for 'New' button...")
+                            page.evaluate("""
+                                () => {
+                                    const els = Array.from(document.querySelectorAll('*'));
+                                    // Find innermost element with exact text 'New'
+                                    const newBtn = els.reverse().find(e => e.textContent.trim() === 'New' && e.children.length === 0);
+                                    if(newBtn) {
+                                        newBtn.click();
+                                        if(newBtn.closest('a')) newBtn.closest('a').click();
+                                        else if(newBtn.closest('button')) newBtn.closest('button').click();
+                                        else if(newBtn.parentElement) newBtn.parentElement.click();
+                                    }
+                                }
+                            """)
+                        time.sleep(5)
                         print(f"[*] Navigated to: {page.url}")
                     except Exception as e:
                         print(f"[-] Failed to click 'New': {e}")
@@ -193,24 +211,26 @@ class HashnodePoster(PosterBase):
         except:
             pass
         
-        print("[*] Searching for final publish button...")
+        print("[*] Searching for final publish button in drawer...")
         clicked = False
         
-        for btn_text in ["Publish", "Publish Now", "Publish Article"]:
-            try:
+        try:
+            for btn_text in ["Publish", "Publish Now", "Publish Article"]:
                 btns = page.locator(f'button:has-text("{btn_text}")')
                 count = btns.count()
-                if count >= 2:
-                    # Second button is usually the confirmation one
-                    btns.nth(1).click()
-                    clicked = True
+                if count > 0:
+                    # Click the last visible one (the one in the drawer)
+                    for i in range(count - 1, -1, -1):
+                        btn = btns.nth(i)
+                        if btn.is_visible():
+                            btn.click()
+                            clicked = True
+                            print(f"[+] Clicked '{btn_text}' button at index {i}")
+                            break
+                if clicked:
                     break
-                elif count == 1:
-                    btns.first.click()
-                    clicked = True
-                    break
-            except:
-                pass
+        except Exception as e:
+            print(f"[-] Error finding publish button: {e}")
                 
         if not clicked:
             print("[*] Trying generic JS fallback...")
@@ -218,31 +238,76 @@ class HashnodePoster(PosterBase):
                 page.evaluate("""
                     () => {
                         const buttons = Array.from(document.querySelectorAll('button'));
-                        const publishBtn = buttons.find(b => 
+                        const publishBtns = buttons.filter(b => 
                             b.textContent.trim().toLowerCase().includes('publish') &&
                             b.offsetParent !== null
                         );
-                        if (publishBtn) publishBtn.click();
+                        if (publishBtns.length > 0) {
+                            publishBtns[publishBtns.length - 1].click();
+                        }
                     }
                 """)
                 clicked = True
-            except:
-                pass
+                print("[+] Clicked via JS fallback")
+            except Exception as e:
+                print(f"[-] JS fallback failed: {e}")
                 
-        print("[*] Waiting a few seconds for publish request to fire...")
-        time.sleep(8)
+        print("[*] Waiting for publish request to process (up to 25s)...")
+        try:
+            # Hashnode changes URL from /draft/... to /edit/... upon successful publish
+            page.wait_for_url(lambda url: "/draft" not in url, timeout=25000)
+            print("[+] URL changed! Publication successful.")
+        except Exception as e:
+            print("[-] Timeout waiting for URL change after publish.")
             
         current_url = page.url
         
-        # If the URL contains "draft", it probably failed.
-        # Published Hashnode articles usually don't contain "draft"
-        if "draft" in current_url and not clicked:
+        # If the URL STILL contains "draft", it definitely failed.
+        if "/draft" in current_url:
             print(f"[-] URL still shows editor: {current_url}")
-            print("[-] Publishing might have failed. Check debug screenshot.")
+            print("[-] Publishing might have failed (missing tags, rate limit, etc).")
             return False, current_url, "Local Profile"
 
+        print(f"[*] Post successful. Current URL is: {current_url}")
+        
+        # Try to extract the actual live blog URL instead of the /edit/ URL
+        live_url = current_url
+        try:
+            extracted = page.evaluate("""
+                () => {
+                    // Try to find a link that goes to the live post
+                    const links = Array.from(document.querySelectorAll('a'));
+                    
+                    // Often there is a toast or a button saying "View"
+                    const viewBtn = links.find(a => 
+                        a.textContent.trim().toLowerCase() === 'view' ||
+                        a.textContent.trim().toLowerCase() === 'view post' ||
+                        a.textContent.trim().toLowerCase() === 'view article'
+                    );
+                    if (viewBtn && viewBtn.href) return viewBtn.href;
+                    
+                    // Otherwise look for any .hashnode.dev or custom domain link that has a slug
+                    const articleLink = links.reverse().find(a => 
+                        a.href && !a.href.includes('/edit') && !a.href.includes('/draft') && 
+                        !a.href.includes('hashnode.com') && a.href.startsWith('http') &&
+                        !a.href.includes('linkedin.com') && !a.href.includes('twitter.com') &&
+                        !a.href.includes('x.com') && !a.href.includes('instagram.com') && 
+                        !a.href.includes('facebook.com') && !a.href.includes('discord.com') &&
+                        !a.href.includes('youtube.com') && !a.href.includes('utm_source')
+                    );
+                    if (articleLink) return articleLink.href;
+                    
+                    return null;
+                }
+            """)
+            if extracted:
+                live_url = extracted
+                print(f"[+] Extracted live URL from page: {live_url}")
+        except:
+            pass
+
         # Try to clean up URL if it has query params
-        live_url = current_url.split("?")[0]
+        live_url = live_url.split("?")[0]
         
         print(f"[+] Successfully posted to Hashnode! URL: {live_url}")
         return True, live_url, "Local Profile"

@@ -114,7 +114,7 @@ class LlmWorker:
             
             # 4. Route Output
             autonomous_mode = os.getenv("AUTONOMOUS_MODE", "false").lower() == "true"
-            is_auto_approved = autonomous_mode and platform in ["devto_article", "github_gist", "medium"]
+            is_auto_approved = autonomous_mode and platform in ["devto_article", "github_gist", "medium", "hashnode"]
             
             contract_b = {
                 "thread_id": thread_id,
@@ -124,7 +124,7 @@ class LlmWorker:
                 "drafted_comment": draft,
                 "review_status": "approved" if is_auto_approved else "pending",
                 "feedback_note": None,
-                "posting_type": "B" if platform == "medium" else ("A" if platform in ["devto_article", "github_gist"] else "M"),
+                "posting_type": "B" if platform in ["medium", "hashnode"] else ("A" if platform in ["devto_article", "github_gist"] else "M"),
                 "approved_at": datetime.now(timezone.utc).isoformat() if is_auto_approved else None
             }
             
