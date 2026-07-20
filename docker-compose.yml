@@ -28,9 +28,81 @@ services:
     networks:
       - backlink_net
 
+  discovery_worker:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.worker
+    container_name: backlink_discovery
+    restart: always
+    depends_on:
+      - db
+      - redis
+    env_file: .env
+    environment:
+      - POSTGRES_HOST=db
+      - REDIS_URL=redis://redis:6379/0
+    networks:
+      - backlink_net
+
+  llm_worker:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.worker
+    container_name: backlink_llm
+    restart: always
+    command: ["python", "llm_pipeline/worker.py"]
+    depends_on:
+      - db
+      - redis
+    env_file: .env
+    environment:
+      - POSTGRES_HOST=db
+      - REDIS_URL=redis://redis:6379/0
+    networks:
+      - backlink_net
+
+  execution_router:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.playwright
+    container_name: backlink_router
+    restart: always
+    depends_on:
+      - db
+      - redis
+    env_file: .env
+    environment:
+      - POSTGRES_HOST=db
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - browser_profiles:/app/browser_profiles
+    networks:
+      - backlink_net
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.dashboard
+    container_name: backlink_dashboard
+    restart: always
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    env_file: .env
+    environment:
+      - POSTGRES_HOST=db
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - browser_profiles:/app/browser_profiles
+    networks:
+      - backlink_net
+
 volumes:
   postgres_data:
   redis_data:
+  browser_profiles:
 
 networks:
   backlink_net:

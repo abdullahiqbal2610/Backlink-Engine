@@ -382,3 +382,45 @@ async function fetchAnalytics() {
         console.error("Failed to load analytics", e);
     }
 }
+
+// Upload Cookies Handler
+async function uploadCookies() {
+    const fileInput = document.getElementById('cookie-file');
+    const platform = document.getElementById('cookie-platform').value;
+    const statusMsg = document.getElementById('cookie-status');
+    
+    if (!fileInput.files || fileInput.files.length === 0) {
+        alert('Please select a JSON file first.');
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+        statusMsg.style.display = 'inline';
+        statusMsg.style.color = '#a1a1aa';
+        statusMsg.textContent = 'Uploading...';
+        
+        const res = await fetch(`/api/upload-cookies/${platform}`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (res.ok) {
+            statusMsg.style.color = '#10b981';
+            statusMsg.textContent = 'Success!';
+            fileInput.value = '';
+            setTimeout(() => { statusMsg.style.display = 'none'; }, 3000);
+        } else {
+            const err = await res.json();
+            statusMsg.style.color = '#ef4444';
+            statusMsg.textContent = err.detail || 'Error uploading';
+        }
+    } catch (e) {
+        console.error(e);
+        statusMsg.style.color = '#ef4444';
+        statusMsg.textContent = 'Connection error';
+    }
+}

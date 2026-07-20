@@ -2,7 +2,7 @@ import os
 import json
 import redis
 import psycopg2
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -42,6 +42,25 @@ class ReviewAction(BaseModel):
 
 class ToggleAction(BaseModel):
     enabled: bool
+
+@app.post("/api/upload-cookies/{platform}")
+async def upload_cookies(platform: str, file: UploadFile = File(...)):
+    if not file.filename.endswith('.json'):
+        raise HTTPException(status_code=400, detail="Only JSON files are allowed")
+    
+    content = await file.read()
+    try:
+        json.loads(content) # validate JSON
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON file")
+        
+    save_path = os.path.join(os.path.dirname(__file__), '..', 'browser_profiles', f"{platform}_cookies.json")
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    
+    with open(save_path, "wb") as f:
+        f.write(content)
+        
+    return {"status": "success", "message": f"{platform} cookies updated successfully!"}
 
 @app.get("/api/health")
 def health_check():

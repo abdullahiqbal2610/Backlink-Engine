@@ -41,6 +41,21 @@
                     <span id="router-status-text">Router Offline</span>
                 </div>
                 <p class="status-hint">Run <code>python execution_router/worker.py</code> to start posting.</p>
+                
+                <!-- Cookie Upload Section -->
+                <div style="margin-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
+                    <span style="font-size: 0.9rem; font-weight: 500; color:#fff;">Update Cookies</span>
+                    <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                        <select id="cookie-platform" style="background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1); padding: 0.4rem; border-radius: 4px; outline: none; font-size: 0.8rem;">
+                            <option value="hashnode">Hashnode</option>
+                            <option value="medium">Medium</option>
+                            <option value="reddit">Reddit</option>
+                        </select>
+                        <input type="file" id="cookie-file" accept=".json" style="font-size: 0.75rem; color: #a1a1aa;">
+                        <button onclick="uploadCookies()" style="background: #3b82f6; color: white; border: none; padding: 0.4rem; border-radius: 4px; font-size: 0.8rem; cursor: pointer;">Upload JSON</button>
+                        <span id="cookie-status" style="font-size: 0.75rem; color: #10b981; display: none;">Success!</span>
+                    </div>
+                </div>
             </div>
 
             <nav class="menu">
