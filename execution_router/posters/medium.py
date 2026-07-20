@@ -185,25 +185,25 @@ class MediumPoster(PosterBase):
             except Exception as e:
                 print(f"[-] JS fallback failed: {e}")
         
-        print("[*] Waiting a few seconds for publish request to fire...")
-        time.sleep(5)
+        print("[*] Waiting for publish request to process (up to 15s)...")
+        try:
+            # Medium redirects from /p/.../edit to the live article URL upon success
+            page.wait_for_url(lambda url: "/edit" not in url, timeout=15000)
+            print("[+] URL changed! Publication successful.")
+        except Exception as e:
+            print("[-] Timeout waiting for URL change after publish. Rate limit might be reached.")
             
         current_url = page.url
         
-        # Extract the shortlink from the URL (e.g., https://medium.com/p/1234567890ab)
-        import re
-        match = re.search(r'(https://medium\.com/p/[a-zA-Z0-9]+)', current_url)
-        if match:
-            live_url = match.group(1)
-        else:
-            live_url = current_url
+        # If the URL STILL contains "/edit", publishing definitely failed (e.g., 2 articles/24hr limit)
+        if "/edit" in current_url:
+            print(f"[-] URL still shows editor: {current_url}")
+            print("[-] Publishing failed. You might have hit the 2 articles/24hr limit on Medium.")
+            return False, current_url, "Local Profile"
             
-        # If it's still clearly an edit page and never reached submission or publish, it failed.
-        if "/edit" in current_url and not clicked:
-            print(f"[-] URL still shows editor and no publish button was clicked: {current_url}")
-            print("[-] Publishing definitely failed. Check debug screenshot.")
-            return False, live_url, "Local Profile"
-
+        # Extract the live URL (Medium live URLs don't have /edit)
+        live_url = current_url.split("?")[0]
+        
         print(f"[+] Successfully posted to Medium! URL: {live_url}")
         return True, live_url, "Local Profile"
 
