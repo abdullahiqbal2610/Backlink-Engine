@@ -1,22 +1,7 @@
 version: '3.8'
 
-services:
-  db:
-    image: postgres:15
-    container_name: backlink_db
-    restart: always
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-backlink_engine}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./infra/init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - backlink_net
 
+services:
   redis:
     image: redis:7-alpine
     container_name: backlink_redis
@@ -35,11 +20,9 @@ services:
     container_name: backlink_discovery
     restart: always
     depends_on:
-      - db
       - redis
     env_file: .env
     environment:
-      - POSTGRES_HOST=db
       - REDIS_URL=redis://redis:6379/0
     networks:
       - backlink_net
@@ -52,11 +35,9 @@ services:
     restart: always
     command: ["python", "llm_pipeline/worker.py"]
     depends_on:
-      - db
       - redis
     env_file: .env
     environment:
-      - POSTGRES_HOST=db
       - REDIS_URL=redis://redis:6379/0
     networks:
       - backlink_net
@@ -100,7 +81,6 @@ services:
       - backlink_net
 
 volumes:
-  postgres_data:
   redis_data:
   browser_profiles:
 
