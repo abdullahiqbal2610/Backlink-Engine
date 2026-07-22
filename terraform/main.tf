@@ -81,33 +81,4 @@ resource "google_cloud_run_v2_job" "llm_worker" {
   }
 }
 
-# 7. Cloud Scheduler Triggers (Every 5 mins)
-resource "google_cloud_scheduler_job" "trigger_router" {
-  name             = "trigger-router-job"
-  description      = "Trigger execution router job"
-  schedule         = "*/5 * * * *"
-  time_zone        = "Etc/UTC"
-  attempt_deadline = "320s"
-  region           = var.region
-
-  http_target {
-    http_method = "POST"
-    uri         = "https://${var.region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.project_id}/jobs/gaper-router-job:run"
-  }
-  depends_on = [google_cloud_run_v2_job.execution_router]
-}
-
-resource "google_cloud_scheduler_job" "trigger_llm" {
-  name             = "trigger-llm-job"
-  description      = "Trigger LLM job"
-  schedule         = "*/5 * * * *"
-  time_zone        = "Etc/UTC"
-  attempt_deadline = "320s"
-  region           = var.region
-
-  http_target {
-    http_method = "POST"
-    uri         = "https://${var.region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.project_id}/jobs/gaper-llm-job:run"
-  }
-  depends_on = [google_cloud_run_v2_job.llm_worker]
-}
+# (Cloud Scheduler triggers removed. Jobs will be triggered via GitHub Actions CRON or manually to avoid GCP API limits)
