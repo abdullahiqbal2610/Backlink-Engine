@@ -4,7 +4,6 @@ import redis
 import psycopg2
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 from pydantic import BaseModel
@@ -293,17 +292,20 @@ def get_analytics():
         
     return stats
 
-# Mount static files for the frontend
-static_dir = os.path.join(os.path.dirname(__file__), "static")
-if not os.path.exists(static_dir):
-    os.makedirs(static_dir)
-# Create a placeholder index.html if the static dir is empty (prevents StaticFiles crash)
-index_html = os.path.join(static_dir, "index.html")
-if not os.path.exists(index_html):
-    with open(index_html, "w") as f:
-        f.write("<html><body><h1>Gaper Backlink Engine API</h1><p>API is running. Use /docs for endpoints.</p></body></html>")
-app.mount("/static-files", StaticFiles(directory=static_dir, html=True), name="static")
+# Mount static files for the frontend (optional - won't crash if aiofiles missing)
+try:
+    from fastapi.staticfiles import StaticFiles
+    static_dir = os.path.join(os.path.dirname(__file__), "static")
+    if not os.path.exists(static_dir):
+        os.makedirs(static_dir)
+    index_html = os.path.join(static_dir, "index.html")
+    if not os.path.exists(index_html):
+        with open(index_html, "w") as f:
+            f.write("<html><body><h1>Gaper Backlink Engine API</h1><p>API is running. Visit <a href='/docs'>/docs</a> for endpoints.</p></body></html>")
+    app.mount("/static-files", StaticFiles(directory=static_dir, html=True), name="static")
+except Exception as e:
+    print(f"Warning: Could not mount static files: {e}")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT", 8080)), reload=False)

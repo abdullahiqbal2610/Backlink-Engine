@@ -2,19 +2,21 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copy dashboard-specific requirements
+# Install system dependencies for psycopg2-binary
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy and install Python dependencies
 COPY dashboard/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Also need psycopg2 for DB
-RUN apt-get update && apt-get install -y libpq-dev build-essential && rm -rf /var/lib/apt/lists/*
-RUN pip install --no-cache-dir psycopg2 redis python-dotenv
-
-# Copy the entire backend
+# Copy the entire project
 COPY . .
 
 # Ensure Python output is unbuffered
 ENV PYTHONUNBUFFERED=1
+ENV PORT=8080
 
 WORKDIR /app/dashboard
 
