@@ -27,25 +27,7 @@ resource "google_artifact_registry_repository" "repo" {
   depends_on    = [google_project_service.artifactregistry_api]
 }
 
-# 3. Cloud Storage Bucket (For Browser Cookies)
-resource "google_storage_bucket" "cookie_bucket" {
-  name          = var.cookie_bucket_name
-  location      = var.region
-  force_destroy = true
-  uniform_bucket_level_access = true
-}
-
-# 4. Service Account for Cloud Run
-resource "google_service_account" "cloud_run_sa" {
-  account_id   = "gaper-cloudrun-sa"
-  display_name = "Cloud Run Service Account"
-}
-
-resource "google_project_iam_member" "sa_storage_admin" {
-  project = var.project_id
-  role    = "roles/storage.admin"
-  member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
-}
+# (Bucket and Service Account removed for Redis-based architecture)
 
 # 5. Dashboard (Cloud Run Service)
 resource "google_cloud_run_v2_service" "dashboard" {
@@ -54,15 +36,8 @@ resource "google_cloud_run_v2_service" "dashboard" {
   ingress  = "INGRESS_TRAFFIC_ALL"
   
   template {
-    service_account = google_service_account.cloud_run_sa.email
     containers {
       image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.docker_repo_name}/dashboard:latest"
-      
-      env {
-        name  = "COOKIE_BUCKET_NAME"
-        value = google_storage_bucket.cookie_bucket.name
-      }
-      # Additional ENV variables (DB, Redis) will be set via Secret Manager or Console manually
     }
   }
   depends_on = [google_project_service.run_api]
@@ -84,7 +59,6 @@ resource "google_cloud_run_v2_job" "execution_router" {
 
   template {
     template {
-      service_account = google_service_account.cloud_run_sa.email
       containers {
         image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.docker_repo_name}/router:latest"
         resources {
@@ -92,10 +66,6 @@ resource "google_cloud_run_v2_job" "execution_router" {
             cpu    = "1"
             memory = "2Gi" # Playwright needs a bit more RAM
           }
-        }
-        env {
-          name  = "COOKIE_BUCKET_NAME"
-          value = google_storage_bucket.cookie_bucket.name
         }
       }
     }
@@ -109,7 +79,6 @@ resource "google_cloud_run_v2_job" "llm_worker" {
 
   template {
     template {
-      service_account = google_service_account.cloud_run_sa.email
       containers {
         image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.docker_repo_name}/worker:latest"
       }
@@ -130,10 +99,6 @@ resource "google_cloud_scheduler_job" "trigger_router" {
   http_target {
     http_method = "POST"
     uri         = "https://${var.region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.project_id}/jobs/gaper-router-job:run"
-    
-    oauth_token {
-      service_account_email = google_service_account.cloud_run_sa.email
-    }
   }
   depends_on = [google_project_service.scheduler_api, google_cloud_run_v2_job.execution_router]
 }
@@ -149,10 +114,6 @@ resource "google_cloud_scheduler_job" "trigger_llm" {
   http_target {
     http_method = "POST"
     uri         = "https://${var.region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.project_id}/jobs/gaper-llm-job:run"
-    
-    oauth_token {
-      service_account_email = google_service_account.cloud_run_sa.email
-    }
   }
   depends_on = [google_project_service.scheduler_api, google_cloud_run_v2_job.llm_worker]
 }

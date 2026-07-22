@@ -130,22 +130,18 @@ def main():
                 mark_thread_status(thread_id, "failed")
                 continue
                 
-            # Download cookies from GCS if configured
-            bucket_name = os.getenv("COOKIE_BUCKET_NAME")
-            if bucket_name and platform in ["hashnode", "medium", "reddit"]:
-                try:
-                    from google.cloud import storage
-                    client = storage.Client()
-                    bucket = client.bucket(bucket_name)
-                    blob = bucket.blob(f"{platform}_cookies.json")
-                    
-                    if blob.exists():
+            # Download cookies from Redis
+            if platform in ["hashnode", "medium", "reddit"]:
+                cookie_str = r.get(f"cookies_{platform}")
+                if cookie_str:
+                    try:
                         save_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'browser_profiles', f"{platform}_cookies.json")
                         os.makedirs(os.path.dirname(save_path), exist_ok=True)
-                        blob.download_to_filename(save_path)
-                        print(f"    [+] Downloaded {platform} cookies from GCS to local disk.")
-                except Exception as e:
-                    print(f"    [-] Failed to download cookies from GCS: {e}")
+                        with open(save_path, "wb") as f:
+                            f.write(cookie_str)
+                        print(f"    [+] Loaded {platform} cookies from Redis to local disk.")
+                    except Exception as e:
+                        print(f"    [-] Failed to write cookies to disk: {e}")
 
             result = poster.post(url, final_comment)
             
