@@ -48,8 +48,13 @@ class DiscoveryPipeline:
             
         try:
             with self.db_conn.cursor() as cur:
-                # Assuming platforms table is populated or we ignore platform constraint for now.
-                # For this basic version, we just insert the thread.
+                # Ensure platform exists to prevent foreign key violation
+                cur.execute(
+                    "INSERT INTO platforms (name) VALUES (%s) ON CONFLICT (name) DO NOTHING",
+                    (platform,)
+                )
+                
+                # Insert the thread
                 cur.execute(
                     """
                     INSERT INTO threads (thread_id, platform, url, title, status)
