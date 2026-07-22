@@ -1,7 +1,7 @@
 variable "project_id" {
   description = "The GCP Project ID"
   type        = string
-  default     = "YOUR_GCP_PROJECT_ID"
+  default     = "gaper-internship"
 }
 
 variable "region" {
@@ -19,5 +19,5 @@ variable "docker_repo_name" {
 variable "cookie_bucket_name" {
   description = "The name of the GCS bucket to store browser cookies"
   type        = string
-  default     = "gaper-cookies-bucket-12345" # MUST BE GLOBALLY UNIQUE, change 12345 to something random
+  default     = "gaper-cookies-bucket-internship-2026"
 }
