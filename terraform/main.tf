@@ -5,22 +5,12 @@ provider "google" {
 
 # (APIs will be managed manually by project owner)
 
-# 2. Artifact Registry for Docker Images
-resource "google_artifact_registry_repository" "repo" {
-  provider      = google
-  location      = var.region
-  repository_id = var.docker_repo_name
-  description   = "Docker repository for Gaper Backlink Engine"
-  format        = "DOCKER"
-}
-
-# (Bucket and Service Account removed for Redis-based architecture)
-
 # 5. Dashboard (Cloud Run Service)
 resource "google_cloud_run_v2_service" "dashboard" {
   name     = "gaper-dashboard"
   location = var.region
   ingress  = "INGRESS_TRAFFIC_ALL"
+  deletion_protection = false
   
   template {
     containers {
@@ -42,6 +32,7 @@ resource "google_cloud_run_service_iam_member" "public_access" {
 resource "google_cloud_run_v2_job" "execution_router" {
   name     = "gaper-router-job"
   location = var.region
+  deletion_protection = false
 
   template {
     template {
@@ -61,6 +52,7 @@ resource "google_cloud_run_v2_job" "execution_router" {
 resource "google_cloud_run_v2_job" "llm_worker" {
   name     = "gaper-llm-job"
   location = var.region
+  deletion_protection = false
 
   template {
     template {
