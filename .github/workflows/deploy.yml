@@ -49,7 +49,10 @@ jobs:
           --region ${{ env.REGION }} \
           --platform managed \
           --allow-unauthenticated \
-          --set-env-vars DATABASE_URL=${{ secrets.DATABASE_URL }},REDIS_URL=${{ secrets.REDIS_URL }}
+          --timeout=300 \
+          --cpu=1 \
+          --memory=512Mi \
+          --set-env-vars "REDIS_URL=${{ secrets.REDIS_URL }},POSTGRES_HOST=${{ secrets.POSTGRES_HOST }},POSTGRES_DB=${{ secrets.POSTGRES_DB }},POSTGRES_USER=${{ secrets.POSTGRES_USER }},POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}"
 
     # Worker Build & Push
     - name: Build and Push Worker (LLM/Discovery)
