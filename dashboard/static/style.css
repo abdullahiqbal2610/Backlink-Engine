@@ -139,6 +139,11 @@ body::before {
     box-shadow: 0 0 12px var(--danger);
 }
 
+.status-dot.orange {
+    background: var(--warning);
+    box-shadow: 0 0 12px var(--warning);
+}
+
 .status-hint {
     margin-top: 1.25rem;
     font-size: 0.75rem;

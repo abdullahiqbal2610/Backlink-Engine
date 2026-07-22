@@ -2,7 +2,9 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchReviews();
     checkAutonomousStatus();
     pollSystemHealth();
+    pollJobStatus();
     setInterval(pollSystemHealth, 10000);
+    setInterval(pollJobStatus, 20000);
     
     // Autonomous Toggle logic
     document.getElementById('autonomous-toggle').addEventListener('change', async (e) => {
@@ -422,5 +424,60 @@ async function uploadCookies() {
         console.error(e);
         statusMsg.style.color = '#ef4444';
         statusMsg.textContent = 'Connection error';
+    }
+}
+
+async function pollJobStatus() {
+    try {
+        const res = await fetch('/api/jobs/status');
+        const data = await res.json();
+        const dot = document.getElementById('router-status-dot');
+        const text = document.getElementById('router-status-text');
+
+        const llm = data.llm_job || {};
+        const router = data.router_job || {};
+        const bothOk = llm.ok && router.ok;
+        const eitherError = (!llm.ok && llm.state !== 'No executions') || (!router.ok && router.state !== 'No executions');
+
+        dot.className = 'status-dot ' + (bothOk ? 'green' : (eitherError ? 'red' : 'orange'));
+        text.textContent = bothOk
+            ? 'Jobs: Online'
+            : `LLM: ${llm.state || '?'} | Router: ${router.state || '?'}`;
+    } catch(e) {
+        const dot = document.getElementById('router-status-dot');
+        const text = document.getElementById('router-status-text');
+        dot.className = 'status-dot red';
+        text.textContent = 'Jobs: Status Unknown';
+    }
+}
+
+async function triggerJob(type) {
+    const statusEl = document.getElementById('trigger-status');
+    const btn = document.getElementById(`btn-run-${type}`);
+    
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    statusEl.style.color = '#a1a1aa';
+    statusEl.textContent = `Triggering ${type}...`;
+
+    try {
+        const res = await fetch(`/api/trigger/${type}`, { method: 'POST' });
+        const data = await res.json();
+
+        if (data.status === 'triggered') {
+            statusEl.style.color = '#10b981';
+            statusEl.textContent = `${type} job launched!`;
+        } else {
+            statusEl.style.color = '#ef4444';
+            statusEl.textContent = data.message || 'Failed to trigger.';
+        }
+    } catch(e) {
+        statusEl.style.color = '#ef4444';
+        statusEl.textContent = 'Network error.';
+    } finally {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        setTimeout(() => { statusEl.textContent = ''; }, 5000);
+        pollJobStatus();
     }
 }

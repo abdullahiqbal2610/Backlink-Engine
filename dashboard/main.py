@@ -2,6 +2,7 @@ import os
 import json
 import redis
 import psycopg2
+import subprocess
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,6 +12,12 @@ from dotenv import load_dotenv, set_key
 
 dotenv_path = os.path.join(os.path.dirname(__file__), '..', '.env')
 load_dotenv(dotenv_path=dotenv_path)
+
+# GCP config for triggering Cloud Run Jobs
+GCP_PROJECT = os.getenv("GCP_PROJECT_ID", "")
+GCP_REGION  = os.getenv("GCP_REGION", "us-central1")
+LLM_JOB_NAME    = os.getenv("LLM_JOB_NAME", "abdul-llm-job")
+ROUTER_JOB_NAME = os.getenv("ROUTER_JOB_NAME", "abdul-router-job")
 
 app = FastAPI(title="Gaper Intern Panel Review")
 
@@ -96,6 +103,66 @@ def toggle_autonomous(action: ToggleAction):
     set_key(dotenv_path, "AUTONOMOUS_MODE", val)
     os.environ["AUTONOMOUS_MODE"] = val
     return {"status": "success", "enabled": action.enabled}
+
+def _run_gcloud_job(job_name: str) -> dict:
+    """Trigger a Cloud Run Job via gcloud CLI (available on Cloud Run)"""
+    if not GCP_PROJECT:
+        return {"status": "error", "message": "GCP_PROJECT_ID not configured"}
+    try:
+        cmd = [
+            "gcloud", "run", "jobs", "execute", job_name,
+            "--region", GCP_REGION,
+            "--project", GCP_PROJECT,
+            "--async"
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        if result.returncode == 0:
+            return {"status": "triggered", "job": job_name, "output": result.stdout.strip()}
+        else:
+            return {"status": "error", "job": job_name, "message": result.stderr.strip()}
+    except FileNotFoundError:
+        return {"status": "error", "message": "gcloud CLI not found on this instance"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.post("/api/trigger/discovery")
+def trigger_discovery():
+    """Manually trigger the LLM Discovery + Drafting Cloud Run Job"""
+    return _run_gcloud_job(LLM_JOB_NAME)
+
+@app.post("/api/trigger/router")
+def trigger_router():
+    """Manually trigger the Execution Router (Playwright poster) Cloud Run Job"""
+    return _run_gcloud_job(ROUTER_JOB_NAME)
+
+@app.get("/api/jobs/status")
+def get_jobs_status():
+    """Get the last execution status of both Cloud Run Jobs"""
+    if not GCP_PROJECT:
+        return {"llm_job": "unknown", "router_job": "unknown", "error": "GCP_PROJECT_ID not set"}
+
+    def _get_job_status(job_name):
+        try:
+            cmd = [
+                "gcloud", "run", "jobs", "executions", "list",
+                "--job", job_name,
+                "--region", GCP_REGION,
+                "--project", GCP_PROJECT,
+                "--limit", "1",
+                "--format", "value(status.conditions[0].type,status.conditions[0].status)"
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+            if result.returncode == 0 and result.stdout.strip():
+                parts = result.stdout.strip().split()
+                return {"state": parts[0] if parts else "Unknown", "ok": parts[1] == "True" if len(parts) > 1 else False}
+            return {"state": "No executions", "ok": False}
+        except Exception as e:
+            return {"state": "error", "ok": False, "detail": str(e)}
+
+    return {
+        "llm_job":    _get_job_status(LLM_JOB_NAME),
+        "router_job": _get_job_status(ROUTER_JOB_NAME)
+    }
 
 @app.get("/api/reviews")
 def get_reviews():

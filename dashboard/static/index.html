@@ -37,10 +37,22 @@
                 </div>
                 
                 <div class="status-item" style="margin-top: 1.5rem;">
-                    <div class="status-dot red" id="router-status-dot"></div>
-                    <span id="router-status-text">Router Offline</span>
+                    <div class="status-dot" id="router-status-dot"></div>
+                    <span id="router-status-text">Checking Jobs...</span>
                 </div>
-                <p class="status-hint">Run <code>python execution_router/worker.py</code> to start posting.</p>
+
+                <!-- Trigger Buttons -->
+                <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                    <button id="btn-run-discovery" onclick="triggerJob('discovery')" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; padding: 0.5rem 0.8rem; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: 600; display:flex; align-items:center; gap:6px; justify-content:center;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+                        Run Discovery
+                    </button>
+                    <button id="btn-run-router" onclick="triggerJob('router')" style="background: linear-gradient(135deg, #0ea5e9, #06b6d4); color: white; border: none; padding: 0.5rem 0.8rem; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: 600; display:flex; align-items:center; gap:6px; justify-content:center;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+                        Run Router
+                    </button>
+                    <span id="trigger-status" style="font-size:0.72rem; color:#10b981; text-align:center; min-height:1rem;"></span>
+                </div>
                 
                 <!-- Cookie Upload Section -->
                 <div style="margin-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
