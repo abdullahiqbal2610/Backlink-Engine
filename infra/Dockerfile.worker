@@ -9,8 +9,9 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY discovery/requirements.txt ./discovery_reqs.txt
+COPY llm_pipeline/requirements.txt ./llm_reqs.txt
+RUN pip install --no-cache-dir -r discovery_reqs.txt -r llm_reqs.txt
 
 # Copy source code
 COPY . .
