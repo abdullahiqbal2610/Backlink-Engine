@@ -54,13 +54,27 @@ async def upload_cookies(platform: str, file: UploadFile = File(...)):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON file")
         
-    save_path = os.path.join(os.path.dirname(__file__), '..', 'browser_profiles', f"{platform}_cookies.json")
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    
-    with open(save_path, "wb") as f:
-        f.write(content)
+    bucket_name = os.getenv("COOKIE_BUCKET_NAME")
+    if bucket_name:
+        # Upload to Google Cloud Storage
+        try:
+            from google.cloud import storage
+            client = storage.Client()
+            bucket = client.bucket(bucket_name)
+            blob = bucket.blob(f"{platform}_cookies.json")
+            blob.upload_from_string(content, content_type="application/json")
+            return {"status": "success", "message": f"{platform} cookies uploaded to GCS successfully!"}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to upload to GCS: {e}")
+    else:
+        # Fallback to local disk for local testing
+        save_path = os.path.join(os.path.dirname(__file__), '..', 'browser_profiles', f"{platform}_cookies.json")
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
         
-    return {"status": "success", "message": f"{platform} cookies updated successfully!"}
+        with open(save_path, "wb") as f:
+            f.write(content)
+            
+        return {"status": "success", "message": f"{platform} cookies saved locally!"}
 
 @app.get("/api/health")
 def health_check():

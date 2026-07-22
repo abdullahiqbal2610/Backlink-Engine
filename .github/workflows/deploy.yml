@@ -1,0 +1,75 @@
+name: Deploy to Google Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+  REPO_NAME: gaper-repo
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    # Add permissions for Workload Identity Federation
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    # Authenticate to GCP (Make sure to configure Workload Identity Federation or Service Account JSON)
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+    - name: Set up Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+
+    - name: Authorize Docker for Artifact Registry
+      run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+    # Dashboard Build & Deploy
+    - name: Build and Push Dashboard
+      run: |
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/dashboard:latest -f infra/Dockerfile.dashboard .
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/dashboard:latest
+
+    - name: Deploy Dashboard to Cloud Run
+      run: |
+        gcloud run deploy gaper-dashboard \
+          --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/dashboard:latest \
+          --region ${{ env.REGION }} \
+          --allow-unauthenticated
+
+    # Worker Build & Push
+    - name: Build and Push Worker (LLM/Discovery)
+      run: |
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/worker:latest -f infra/Dockerfile.worker .
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/worker:latest
+
+    # Router Build & Push
+    - name: Build and Push Router
+      run: |
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/router:latest -f infra/Dockerfile.playwright .
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/router:latest
+
+    # Note: Cloud Run Jobs update automatically when the image with 'latest' tag is updated, 
+    # but to trigger a redeploy safely, we update the job definition:
+    - name: Update LLM Job
+      run: |
+        gcloud run jobs update gaper-llm-job \
+          --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/worker:latest \
+          --region ${{ env.REGION }}
+
+    - name: Update Router Job
+      run: |
+        gcloud run jobs update gaper-router-job \
+          --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/router:latest \
+          --region ${{ env.REGION }}

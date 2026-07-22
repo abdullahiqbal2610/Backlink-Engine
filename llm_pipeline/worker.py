@@ -76,8 +76,8 @@ class LlmWorker:
             item = self.redis_client.brpop("discovery_queue", timeout=5)
             
             if not item:
-                # No items, loop again
-                continue
+                print("[*] Queue is empty. Exiting for Serverless scale-to-zero.")
+                break
                 
             _, data_bytes = item
             payload = json.loads(data_bytes.decode('utf-8'))

@@ -91,13 +91,15 @@ def log_to_google_sheet(platform: str, live_url: str, account_used: str):
 def main():
     print("=== Execution Router Worker ===")
     print(f"[+] Loaded {len(POSTER_REGISTRY)} platform poster(s): {', '.join(POSTER_REGISTRY.keys())}")
-    print("Listening on 'posting_queue'...")
+    print("Processing 'posting_queue'...")
 
     while True:
         try:
-            result = r.brpop("posting_queue", timeout=0)
+            # timeout=5 means if queue is empty for 5 seconds, it returns None
+            result = r.brpop("posting_queue", timeout=5)
             if result is None:
-                continue
+                print("[*] Queue is empty. Exiting for Serverless scale-to-zero.")
+                break
             _, item = result
             payload = json.loads(item.decode("utf-8"))
 
@@ -127,6 +129,23 @@ def main():
                 print(f"    Available platforms: {', '.join(POSTER_REGISTRY.keys())}")
                 mark_thread_status(thread_id, "failed")
                 continue
+                
+            # Download cookies from GCS if configured
+            bucket_name = os.getenv("COOKIE_BUCKET_NAME")
+            if bucket_name and platform in ["hashnode", "medium", "reddit"]:
+                try:
+                    from google.cloud import storage
+                    client = storage.Client()
+                    bucket = client.bucket(bucket_name)
+                    blob = bucket.blob(f"{platform}_cookies.json")
+                    
+                    if blob.exists():
+                        save_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'browser_profiles', f"{platform}_cookies.json")
+                        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+                        blob.download_to_filename(save_path)
+                        print(f"    [+] Downloaded {platform} cookies from GCS to local disk.")
+                except Exception as e:
+                    print(f"    [-] Failed to download cookies from GCS: {e}")
 
             result = poster.post(url, final_comment)
             
