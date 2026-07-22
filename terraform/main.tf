@@ -3,19 +3,7 @@ provider "google" {
   region  = var.region
 }
 
-# 1. Enable Required GCP APIs
-resource "google_project_service" "run_api" {
-  service = "run.googleapis.com"
-  disable_on_destroy = false
-}
-resource "google_project_service" "artifactregistry_api" {
-  service = "artifactregistry.googleapis.com"
-  disable_on_destroy = false
-}
-resource "google_project_service" "scheduler_api" {
-  service = "cloudscheduler.googleapis.com"
-  disable_on_destroy = false
-}
+# (APIs will be managed manually by project owner)
 
 # 2. Artifact Registry for Docker Images
 resource "google_artifact_registry_repository" "repo" {
@@ -24,7 +12,6 @@ resource "google_artifact_registry_repository" "repo" {
   repository_id = var.docker_repo_name
   description   = "Docker repository for Gaper Backlink Engine"
   format        = "DOCKER"
-  depends_on    = [google_project_service.artifactregistry_api]
 }
 
 # (Bucket and Service Account removed for Redis-based architecture)
@@ -40,7 +27,6 @@ resource "google_cloud_run_v2_service" "dashboard" {
       image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.docker_repo_name}/dashboard:latest"
     }
   }
-  depends_on = [google_project_service.run_api]
 }
 
 # Make Dashboard Publicly Accessible
@@ -70,7 +56,6 @@ resource "google_cloud_run_v2_job" "execution_router" {
       }
     }
   }
-  depends_on = [google_project_service.run_api]
 }
 
 resource "google_cloud_run_v2_job" "llm_worker" {
@@ -84,7 +69,6 @@ resource "google_cloud_run_v2_job" "llm_worker" {
       }
     }
   }
-  depends_on = [google_project_service.run_api]
 }
 
 # 7. Cloud Scheduler Triggers (Every 5 mins)
@@ -100,7 +84,7 @@ resource "google_cloud_scheduler_job" "trigger_router" {
     http_method = "POST"
     uri         = "https://${var.region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.project_id}/jobs/gaper-router-job:run"
   }
-  depends_on = [google_project_service.scheduler_api, google_cloud_run_v2_job.execution_router]
+  depends_on = [google_cloud_run_v2_job.execution_router]
 }
 
 resource "google_cloud_scheduler_job" "trigger_llm" {
@@ -115,5 +99,5 @@ resource "google_cloud_scheduler_job" "trigger_llm" {
     http_method = "POST"
     uri         = "https://${var.region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.project_id}/jobs/gaper-llm-job:run"
   }
-  depends_on = [google_project_service.scheduler_api, google_cloud_run_v2_job.llm_worker]
+  depends_on = [google_cloud_run_v2_job.llm_worker]
 }
