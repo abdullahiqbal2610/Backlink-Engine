@@ -20,4 +20,4 @@ COPY . .
 ENV PYTHONUNBUFFERED=1
 
 # Command is overridden in docker-compose.yml
-CMD ["python", "discovery/main.py"]
+CMD ["bash", "infra/run_worker.sh"]
