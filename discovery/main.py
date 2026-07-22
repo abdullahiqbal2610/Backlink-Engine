@@ -20,8 +20,8 @@ from serp_fetcher import SerpFetcher
 from pipeline     import DiscoveryPipeline
 
 # Import aggregated feed list from the poster registry (plug-and-play)
-from execution_router.posters import DISCOVERY_FEEDS
-
+# from execution_router.posters import DISCOVERY_FEEDS
+DISCOVERY_FEEDS = [] # Hardcoded empty to avoid Playwright dependency in LLM worker
 
 def run_discovery():
     print("=== Starting Discovery Engine ===")
