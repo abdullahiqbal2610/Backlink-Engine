@@ -184,6 +184,46 @@ def get_jobs_status():
         "router_job": _get_job_last_status(ROUTER_JOB_NAME)
     }
 
+def _get_gcp_logs(job_name: str) -> list:
+    """Fetch recent logs from GCP Cloud Logging for a specific job"""
+    import urllib.request, urllib.error
+    if not GCP_PROJECT:
+        return ["[!] GCP_PROJECT_ID not configured"]
+    try:
+        token = _get_gcp_token()
+        url = "https://logging.googleapis.com/v2/entries:list"
+        payload = {
+            "resourceNames": [f"projects/{GCP_PROJECT}"],
+            "filter": f'resource.type="cloud_run_job" AND resource.labels.job_name="{job_name}" AND (severity="INFO" OR severity="ERROR" OR severity="WARNING")',
+            "orderBy": "timestamp desc",
+            "pageSize": 50
+        }
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+            entries = data.get("entries", [])
+            lines = []
+            for e in reversed(entries):  # Reverse to show oldest first locally
+                text = e.get("textPayload", "")
+                if text:
+                    lines.append(text.strip())
+            return lines if lines else ["[Waiting for logs...]"]
+    except Exception as e:
+        return [f"[!] Failed to fetch logs: {e}"]
+
+@app.get("/api/logs/discovery")
+def get_discovery_logs():
+    return {"logs": _get_gcp_logs(LLM_JOB_NAME)}
+
+@app.get("/api/logs/router")
+def get_router_logs():
+    return {"logs": _get_gcp_logs(ROUTER_JOB_NAME)}
+
 @app.get("/api/reviews")
 def get_reviews():
     """Fetch all pending reviews from the review_queue"""

@@ -139,6 +139,21 @@
                     <canvas id="platformChart" height="100"></canvas>
                 </div>
             </div>
+
+            <!-- Live Terminal Logs -->
+            <div class="terminal-wrapper" id="terminal-wrapper">
+                <div class="terminal-header">
+                    <span>Live Cloud Run Logs</span>
+                    <div class="terminal-tabs">
+                        <button class="tab-btn active" onclick="switchLogTab('llm')">Discovery & LLM</button>
+                        <button class="tab-btn" onclick="switchLogTab('router')">Execution Router</button>
+                    </div>
+                </div>
+                <div class="terminal-body" id="terminal-body">
+                    <pre id="log-output">[System] Waiting for logs...</pre>
+                </div>
+            </div>
+            
         </main>
     </div>
 

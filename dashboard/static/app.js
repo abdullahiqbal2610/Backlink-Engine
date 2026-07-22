@@ -481,3 +481,55 @@ async function triggerJob(type) {
         pollJobStatus();
     }
 }
+
+// ==========================================
+// Terminal Logs Logic
+// ==========================================
+let currentLogTab = 'llm';
+let terminalInterval = null;
+
+function switchLogTab(tabName) {
+    currentLogTab = tabName;
+    document.querySelectorAll('.terminal-tabs .tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.textContent.toLowerCase().includes(tabName === 'llm' ? 'discovery' : 'router')) {
+            btn.classList.add('active');
+        }
+    });
+    fetchLogs(); // Fetch immediately on switch
+}
+
+async function fetchLogs() {
+    try {
+        const res = await fetch(`/api/logs/${currentLogTab}`);
+        const data = await res.json();
+        const pre = document.getElementById('log-output');
+        
+        if (data.logs && data.logs.length > 0) {
+            // Apply simple coloring
+            const formatted = data.logs.map(line => {
+                let cssClass = '';
+                if (line.includes('[-]')) cssClass = 'log-line-error';
+                else if (line.includes('[!]')) cssClass = 'log-line-warning';
+                else if (line.includes('[*]') || line.includes('[+]') || line.includes('===')) cssClass = 'log-line-system';
+                
+                // Escape HTML to prevent injection
+                const text = line.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                return cssClass ? `<span class="${cssClass}">${text}</span>` : text;
+            }).join('\n');
+            
+            pre.innerHTML = formatted;
+            // Auto scroll to bottom
+            const body = document.getElementById('terminal-body');
+            body.scrollTop = body.scrollHeight;
+        } else {
+            pre.textContent = '[System] No logs found for this job yet...';
+        }
+    } catch(e) {
+        document.getElementById('log-output').textContent = '[!] Network error fetching logs.';
+    }
+}
+
+// Start polling logs every 3 seconds
+setInterval(fetchLogs, 3000);
+fetchLogs(); // Initial fetch
