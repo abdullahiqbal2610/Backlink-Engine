@@ -302,7 +302,7 @@ try:
     if not os.path.exists(index_html):
         with open(index_html, "w") as f:
             f.write("<html><body><h1>Gaper Backlink Engine API</h1><p>API is running. Visit <a href='/docs'>/docs</a> for endpoints.</p></body></html>")
-    app.mount("/static-files", StaticFiles(directory=static_dir, html=True), name="static")
+    app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
 except Exception as e:
     print(f"Warning: Could not mount static files: {e}")
 
