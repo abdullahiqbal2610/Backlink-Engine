@@ -104,64 +104,84 @@ def toggle_autonomous(action: ToggleAction):
     os.environ["AUTONOMOUS_MODE"] = val
     return {"status": "success", "enabled": action.enabled}
 
-def _run_gcloud_job(job_name: str) -> dict:
-    """Trigger a Cloud Run Job via gcloud CLI (available on Cloud Run)"""
+def _get_gcp_token() -> str:
+    """Get access token from GCP metadata server (works inside Cloud Run automatically)"""
+    import urllib.request
+    req = urllib.request.Request(
+        "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token",
+        headers={"Metadata-Flavor": "Google"}
+    )
+    with urllib.request.urlopen(req, timeout=5) as resp:
+        return json.loads(resp.read())["access_token"]
+
+def _run_gcp_job(job_name: str) -> dict:
+    """Trigger a Cloud Run Job via GCP REST API (no gcloud CLI needed)"""
+    import urllib.request, urllib.error
     if not GCP_PROJECT:
         return {"status": "error", "message": "GCP_PROJECT_ID not configured"}
     try:
-        cmd = [
-            "gcloud", "run", "jobs", "execute", job_name,
-            "--region", GCP_REGION,
-            "--project", GCP_PROJECT,
-            "--async"
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-        if result.returncode == 0:
-            return {"status": "triggered", "job": job_name, "output": result.stdout.strip()}
-        else:
-            return {"status": "error", "job": job_name, "message": result.stderr.strip()}
-    except FileNotFoundError:
-        return {"status": "error", "message": "gcloud CLI not found on this instance"}
+        token = _get_gcp_token()
+        url = f"https://run.googleapis.com/v2/projects/{GCP_PROJECT}/locations/{GCP_REGION}/jobs/{job_name}:run"
+        req = urllib.request.Request(
+            url,
+            data=b"{}",
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            result = json.loads(resp.read())
+            return {"status": "triggered", "job": job_name, "execution": result.get("name", "started")}
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        return {"status": "error", "job": job_name, "message": body}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+def _get_job_last_status(job_name: str) -> dict:
+    """Get last execution status of a Cloud Run Job via REST API"""
+    import urllib.request, urllib.error
+    if not GCP_PROJECT:
+        return {"state": "unknown", "ok": False}
+    try:
+        token = _get_gcp_token()
+        url = f"https://run.googleapis.com/v2/projects/{GCP_PROJECT}/locations/{GCP_REGION}/jobs/{job_name}/executions?pageSize=1"
+        req = urllib.request.Request(
+            url,
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+            executions = data.get("executions", [])
+            if not executions:
+                return {"state": "No executions", "ok": False}
+            latest = executions[0]
+            conditions = latest.get("conditions", [])
+            for cond in conditions:
+                if cond.get("type") == "Completed":
+                    ok = cond.get("status") == "True"
+                    return {"state": "Completed" if ok else cond.get("reason", "Running"), "ok": ok}
+            return {"state": "Running", "ok": False}
+    except Exception as e:
+        return {"state": "error", "ok": False, "detail": str(e)}
+
+
 
 @app.post("/api/trigger/discovery")
 def trigger_discovery():
     """Manually trigger the LLM Discovery + Drafting Cloud Run Job"""
-    return _run_gcloud_job(LLM_JOB_NAME)
+    return _run_gcp_job(LLM_JOB_NAME)
 
 @app.post("/api/trigger/router")
 def trigger_router():
     """Manually trigger the Execution Router (Playwright poster) Cloud Run Job"""
-    return _run_gcloud_job(ROUTER_JOB_NAME)
+    return _run_gcp_job(ROUTER_JOB_NAME)
 
 @app.get("/api/jobs/status")
 def get_jobs_status():
     """Get the last execution status of both Cloud Run Jobs"""
-    if not GCP_PROJECT:
-        return {"llm_job": "unknown", "router_job": "unknown", "error": "GCP_PROJECT_ID not set"}
-
-    def _get_job_status(job_name):
-        try:
-            cmd = [
-                "gcloud", "run", "jobs", "executions", "list",
-                "--job", job_name,
-                "--region", GCP_REGION,
-                "--project", GCP_PROJECT,
-                "--limit", "1",
-                "--format", "value(status.conditions[0].type,status.conditions[0].status)"
-            ]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
-            if result.returncode == 0 and result.stdout.strip():
-                parts = result.stdout.strip().split()
-                return {"state": parts[0] if parts else "Unknown", "ok": parts[1] == "True" if len(parts) > 1 else False}
-            return {"state": "No executions", "ok": False}
-        except Exception as e:
-            return {"state": "error", "ok": False, "detail": str(e)}
-
     return {
-        "llm_job":    _get_job_status(LLM_JOB_NAME),
-        "router_job": _get_job_status(ROUTER_JOB_NAME)
+        "llm_job":    _get_job_last_status(LLM_JOB_NAME),
+        "router_job": _get_job_last_status(ROUTER_JOB_NAME)
     }
 
 @app.get("/api/reviews")
