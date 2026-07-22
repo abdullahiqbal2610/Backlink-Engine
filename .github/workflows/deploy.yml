@@ -43,10 +43,12 @@ jobs:
 
     - name: Deploy Dashboard to Cloud Run
       run: |
-        gcloud run deploy gaper-dashboard \
+        gcloud run deploy abdul-dashboard \
           --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/dashboard:latest \
           --region ${{ env.REGION }} \
-          --allow-unauthenticated
+          --platform managed \
+          --allow-unauthenticated \
+          --set-env-vars DATABASE_URL=${{ secrets.DATABASE_URL }},REDIS_URL=${{ secrets.REDIS_URL }}
 
     # Worker Build & Push
     - name: Build and Push Worker (LLM/Discovery)
@@ -62,14 +64,14 @@ jobs:
 
     # Note: Cloud Run Jobs update automatically when the image with 'latest' tag is updated, 
     # but to trigger a redeploy safely, we update the job definition:
-    - name: Update LLM Job
+    - name: Deploy LLM Worker to Cloud Run
       run: |
-        gcloud run jobs update gaper-llm-job \
+        gcloud run jobs update abdul-llm-job \
           --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/worker:latest \
           --region ${{ env.REGION }}
 
     - name: Update Router Job
       run: |
-        gcloud run jobs update gaper-router-job \
+        gcloud run jobs update abdul-router-job \
           --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/router:latest \
           --region ${{ env.REGION }}
