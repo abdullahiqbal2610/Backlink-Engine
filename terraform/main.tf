@@ -14,8 +14,14 @@ resource "google_cloud_run_v2_service" "dashboard" {
   
   template {
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.docker_repo_name}/dashboard:latest"
+      image = "us-docker.pkg.dev/cloudrun/container/hello"
     }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      template[0].containers[0].image
+    ]
   }
 }
 
@@ -37,7 +43,7 @@ resource "google_cloud_run_v2_job" "execution_router" {
   template {
     template {
       containers {
-        image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.docker_repo_name}/router:latest"
+        image = "us-docker.pkg.dev/cloudrun/container/hello"
         resources {
           limits = {
             cpu    = "1"
@@ -46,6 +52,12 @@ resource "google_cloud_run_v2_job" "execution_router" {
         }
       }
     }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      template[0].template[0].containers[0].image
+    ]
   }
 }
 
@@ -57,9 +69,15 @@ resource "google_cloud_run_v2_job" "llm_worker" {
   template {
     template {
       containers {
-        image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.docker_repo_name}/worker:latest"
+        image = "us-docker.pkg.dev/cloudrun/container/hello"
       }
     }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      template[0].template[0].containers[0].image
+    ]
   }
 }
 
