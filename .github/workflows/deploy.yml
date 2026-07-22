@@ -36,6 +36,20 @@ jobs:
     - name: Authorize Docker for Artifact Registry
       run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
 
+    - name: Prepare Env Vars
+      run: |
+        echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
+        python3 -c "
+        vars = []
+        with open('.env') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    vars.append(line)
+        # Use @ as delimiter to safely handle commas in DEVTO_API_KEY
+        print('^@^' + '@'.join(vars))
+        " > env_args.txt
+
     # Dashboard Build & Deploy
     - name: Build and Push Dashboard
       run: |
@@ -44,6 +58,7 @@ jobs:
 
     - name: Deploy Dashboard to Cloud Run
       run: |
+        ENV_ARGS=$(cat env_args.txt)
         gcloud run deploy abdul-dashboard \
           --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/dashboard:latest \
           --region ${{ env.REGION }} \
@@ -52,7 +67,7 @@ jobs:
           --timeout=300 \
           --cpu=1 \
           --memory=512Mi \
-          --set-env-vars "REDIS_URL=${{ secrets.REDIS_URL }},POSTGRES_HOST=${{ secrets.POSTGRES_HOST }},POSTGRES_DB=${{ secrets.POSTGRES_DB }},POSTGRES_USER=${{ secrets.POSTGRES_USER }},POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}"
+          --set-env-vars "$ENV_ARGS"
 
     # Worker Build & Push
     - name: Build and Push Worker (LLM/Discovery)
@@ -66,16 +81,18 @@ jobs:
         docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/router:latest -f infra/Dockerfile.playwright .
         docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/router:latest
 
-    # Note: Cloud Run Jobs update automatically when the image with 'latest' tag is updated, 
-    # but to trigger a redeploy safely, we update the job definition:
     - name: Deploy LLM Worker to Cloud Run
       run: |
+        ENV_ARGS=$(cat env_args.txt)
         gcloud run jobs update abdul-llm-job \
           --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/worker:latest \
-          --region ${{ env.REGION }}
+          --region ${{ env.REGION }} \
+          --update-env-vars "$ENV_ARGS"
 
     - name: Update Router Job
       run: |
+        ENV_ARGS=$(cat env_args.txt)
         gcloud run jobs update abdul-router-job \
           --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/router:latest \
-          --region ${{ env.REGION }}
+          --region ${{ env.REGION }} \
+          --update-env-vars "$ENV_ARGS"
