@@ -194,7 +194,7 @@ def _get_gcp_logs(job_name: str) -> list:
         url = "https://logging.googleapis.com/v2/entries:list"
         payload = {
             "resourceNames": [f"projects/{GCP_PROJECT}"],
-            "filter": f'resource.type="cloud_run_job" AND resource.labels.job_name="{job_name}" AND (severity="INFO" OR severity="ERROR" OR severity="WARNING")',
+            "filter": f'resource.type="cloud_run_job" AND resource.labels.job_name="{job_name}"',
             "orderBy": "timestamp desc",
             "pageSize": 50
         }

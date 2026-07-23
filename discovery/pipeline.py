@@ -50,7 +50,7 @@ class DiscoveryPipeline:
             with self.db_conn.cursor() as cur:
                 # Ensure platform exists to prevent foreign key violation
                 cur.execute(
-                    "INSERT INTO platforms (name) VALUES (%s) ON CONFLICT (name) DO NOTHING",
+                    "INSERT INTO platforms (name, scrape_type, posting_type) VALUES (%s, 'API', 'C') ON CONFLICT (name) DO NOTHING",
                     (platform,)
                 )
                 
