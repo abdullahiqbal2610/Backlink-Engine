@@ -177,6 +177,10 @@ def main():
                 mark_thread_status(thread_id, "posted")
                 
                 if live_url:
+                    # 1. Log to Google Sheets first (doesn't depend on DB)
+                    log_to_google_sheet(platform, live_url, account_used)
+                    
+                    # 2. Try to save to Postgres DB
                     try:
                         conn = get_db_connection()
                         with conn.cursor() as cur:
@@ -187,10 +191,6 @@ def main():
                         conn.commit()
                         conn.close()
                         print(f"    [+] Saved live URL: {live_url}")
-                        
-                        # Log to Google Sheets
-                        log_to_google_sheet(platform, live_url, account_used)
-                        
                     except Exception as e:
                         print(f"    [-] Failed to save post_result to DB: {e}")
                 
