@@ -11,6 +11,7 @@ and register it in execution_router/posters/__init__.py. Nothing here changes.
 import os
 import sys
 import time
+import random
 
 # Allow importing from sibling packages
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -73,11 +74,24 @@ def run_discovery():
 
     print(f"[*] Running SERP discovery across {len(serp_targets)} query target(s)...")
 
+    all_discovered_items = []
+    
     for target in serp_targets:
         query = serp.generate_dork(target["site"], target["keyword"])
         items = serp.fetch_results(query, max_results=10)
         for item in items:
-            pipeline.process_item(item, platform=target["platform"], scrape_type=target["scrape_type"])
+            # Attach target info to the item so we can process it later
+            item["_target_platform"] = target["platform"]
+            item["_target_scrape_type"] = target["scrape_type"]
+            all_discovered_items.append(item)
+            
+    # Shuffle the items so the LLM pipeline gets a healthy mix of platforms
+    print(f"[*] Discovered {len(all_discovered_items)} items. Shuffling before queueing...")
+    random.shuffle(all_discovered_items)
+    
+    # Now process them in randomized order
+    for item in all_discovered_items:
+        pipeline.process_item(item, platform=item["_target_platform"], scrape_type=item["_target_scrape_type"])
 
     pipeline.close()
     print("=== Discovery Engine Run Complete ===")
