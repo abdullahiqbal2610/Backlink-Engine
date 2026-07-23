@@ -64,6 +64,12 @@ jobs:
         print(f"Generated env_vars.yaml with {len(yaml_lines)} variables")
         PYEOF
 
+    # Write GCP credentials JSON from secret so it's available in the container
+    - name: Write GCP Credentials JSON
+      run: |
+        echo '${{ secrets.GCP_CREDENTIALS }}' > gcp_credentials.json
+        echo "GCP credentials written."
+
     # Run DB migrations against Neon (only uses psycopg2 which is built-in)
     - name: Run Database Migrations
       run: |

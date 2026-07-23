@@ -53,39 +53,44 @@ def mark_thread_status(thread_id: str, status: str):
 def log_to_google_sheet(platform: str, live_url: str, account_used: str):
     sheet_id = os.getenv("GOOGLE_SHEET_ID")
     if not sheet_id:
+        print("    [!] GOOGLE_SHEET_ID not set. Skipping sheet log.")
         return
         
     try:
         import gspread
-        from google.oauth2.service_account import Credentials
         from datetime import datetime
         
-        creds_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'gcp_credentials.json')
-        if not os.path.exists(creds_path):
-            print("    [-] gcp_credentials.json not found. Skipping Google Sheet log.")
-            return
-            
         scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-        creds = Credentials.from_service_account_file(creds_path, scopes=scopes)
-        client = gspread.authorize(creds)
+        
+        # Try file-based credentials first (local dev), then fall back to ADC (Cloud Run)
+        creds_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'gcp_credentials.json')
+        if os.path.exists(creds_path):
+            from google.oauth2.service_account import Credentials
+            creds = Credentials.from_service_account_file(creds_path, scopes=scopes)
+            client = gspread.authorize(creds)
+            print("    [*] Using file-based GCP credentials for Sheets.")
+        else:
+            # On Cloud Run: use the service account attached to the job (ADC)
+            import google.auth
+            creds, _ = google.auth.default(scopes=scopes)
+            client = gspread.authorize(creds)
+            print("    [*] Using Application Default Credentials for Sheets.")
         
         sheet = client.open_by_key(sheet_id).sheet1
         
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        # Headings: Timestamp, Platform, Live URL, Account Used
         row_data = [timestamp, platform, live_url or "Draft Saved", account_used]
         
-        # To avoid shifting when user adds other tables (like Tally) to the right,
-        # explicitly find the next empty row based ONLY on Column A
+        # Find next empty row in Column A to avoid overwriting
         col_values = sheet.col_values(1)
         next_row = len(col_values) + 1
         sheet.update(values=[row_data], range_name=f"A{next_row}:D{next_row}")
         
-        print(f"    [+] Logged successfully to Google Sheets!")
+        print(f"    [+] Logged to Google Sheets: row {next_row}")
         
     except Exception as e:
         print(f"    [-] Failed to log to Google Sheets: {e}")
+
 
 
 def main():
@@ -189,16 +194,22 @@ def main():
                                 INSERT INTO platforms (name, scrape_type, posting_type) 
                                 VALUES (%s, 'API', 'C') ON CONFLICT (name) DO NOTHING
                             """, (platform,))
+                            # Try insert, ignore all duplicate conflicts (thread_id or url)
                             cur.execute("""
                                 INSERT INTO threads (thread_id, platform, url, title, status)
                                 VALUES (%s, %s, %s, %s, 'posted')
-                                ON CONFLICT (thread_id) DO UPDATE SET status='posted', updated_at=CURRENT_TIMESTAMP
+                                ON CONFLICT DO NOTHING
                             """, (thread_id, platform, url, url))
+                            # Always mark status as posted regardless
+                            cur.execute("""
+                                UPDATE threads SET status='posted', updated_at=CURRENT_TIMESTAMP
+                                WHERE thread_id=%s OR url=%s
+                            """, (thread_id, url))
                             cur.execute("""
                                 INSERT INTO post_results (thread_id, post_status, post_url, posted_at)
-                                VALUES (%s, 'success', %s, CURRENT_TIMESTAMP)
-                                ON CONFLICT DO NOTHING
-                            """, (thread_id, live_url))
+                                SELECT %s, 'success', %s, CURRENT_TIMESTAMP
+                                WHERE NOT EXISTS (SELECT 1 FROM post_results WHERE post_url=%s)
+                            """, (thread_id, live_url, live_url))
                         conn.commit()
                         conn.close()
                         print(f"    [+] Saved live URL to DB: {live_url}")
