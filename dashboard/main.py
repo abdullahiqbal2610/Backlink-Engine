@@ -94,14 +94,14 @@ def health_check():
 
 @app.get("/api/autonomous/status")
 def get_autonomous_status():
-    status = os.getenv("AUTONOMOUS_MODE", "false").lower() == "true"
+    val = r.get("AUTONOMOUS_MODE")
+    status = (val and val.decode("utf-8") == "true") if val else (os.getenv("AUTONOMOUS_MODE", "false").lower() == "true")
     return {"enabled": status}
 
 @app.post("/api/autonomous/toggle")
 def toggle_autonomous(action: ToggleAction):
     val = "true" if action.enabled else "false"
-    set_key(dotenv_path, "AUTONOMOUS_MODE", val)
-    os.environ["AUTONOMOUS_MODE"] = val
+    r.set("AUTONOMOUS_MODE", val)
     return {"status": "success", "enabled": action.enabled}
 
 def _get_gcp_token() -> str:
