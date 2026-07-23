@@ -24,8 +24,11 @@ class MediumPoster(PosterBase):
         try:
             with sync_playwright() as p:
                 launch_options = {
-                    "headless": False,  # Visible browser
+                    "headless": True,  # Must be True for Cloud Run (no display)
                     "args": [
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                        "--disable-dev-shm-usage",
                         "--disable-blink-features=AutomationControlled",
                         "--ignore-certificate-errors"
                     ]

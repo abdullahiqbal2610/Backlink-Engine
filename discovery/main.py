@@ -28,69 +28,62 @@ def run_discovery():
     print("=== Starting Discovery Engine ===")
 
     pipeline = DiscoveryPipeline()
-    rss  = RssFetcher()
     serp = SerpFetcher()
 
-    # ── 1. RSS / API Feed Discovery (auto-aggregated from all poster modules) ──
-    rss_targets = DISCOVERY_FEEDS   # Comes from every platform's discover_feeds()
+    # ── SERP Targets: 3 per platform, balanced across all 4 platforms ──
+    # Each platform gets equal queries → equal representation in final queue
+    serp_targets_by_platform = {
+        "devto_article": [
+            {"site": "stackoverflow.com",        "keyword": "python microservices architecture best practices"},
+            {"site": "reddit.com/r/webdev",      "keyword": "how to implement robust authentication in Next.js"},
+            {"site": "news.ycombinator.com",     "keyword": "optimizing postgres database queries"},
+        ],
+        "github_gist": [
+            {"site": "stackoverflow.com",        "keyword": "python asyncio rate limiter decorator example"},
+            {"site": "stackoverflow.com",        "keyword": "react custom hook for localstorage syncing"},
+            {"site": "reddit.com/r/programming", "keyword": "golang concurrent worker pool implementation"},
+        ],
+        "medium": [
+            {"site": "news.ycombinator.com",     "keyword": "how AI is replacing software engineers 2026"},
+            {"site": "reddit.com/r/programming", "keyword": "future of web development frameworks"},
+            {"site": "reddit.com/r/SaaS",        "keyword": "building an AI agent for customer support"},
+        ],
+        "hashnode": [
+            {"site": "news.ycombinator.com",     "keyword": "scaling postgres with read replicas"},
+            {"site": "stackoverflow.com",        "keyword": "react server components best practices"},
+            {"site": "reddit.com/r/programming", "keyword": "rust versus go for backend microservices"},
+        ],
+    }
 
-    print(f"[*] Running RSS discovery across {len(rss_targets)} feed(s)...")
+    print(f"[*] Running SERP discovery across {sum(len(v) for v in serp_targets_by_platform.values())} query target(s)...")
 
-    # TEMPORARILY DISABLED to prioritize SERP high-value targets
-    # for target in rss_targets:
-    #     if target.get("scrape_type", 1) == 1:
-    #         items = rss.fetch_feed(target["url"])
-    #         for item in items:
-    #             pipeline.process_item(item, platform=target["platform"], scrape_type=1)
+    # Fetch per platform first, then interleave (round-robin) so queue is balanced
+    items_by_platform = {}
+    for platform, queries in serp_targets_by_platform.items():
+        items_by_platform[platform] = []
+        for q in queries:
+            query = serp.generate_dork(q["site"], q["keyword"])
+            results = serp.fetch_results(query, max_results=8)
+            for item in results:
+                item["_target_platform"] = platform
+                item["_target_scrape_type"] = 2
+                items_by_platform[platform].append(item)
+        random.shuffle(items_by_platform[platform])
+        print(f"[*] {platform}: {len(items_by_platform[platform])} items found")
 
-    # ── 2. SERP / Dork Discovery (manually curated high-value queries) ──
-    serp_targets = [
-        # Dev.to Article Targets
-        {"site": "stackoverflow.com",        "keyword": "python microservices architecture best practices", "platform": "devto_article", "scrape_type": 2},
-        {"site": "news.ycombinator.com",     "keyword": "fastapi vs django performance 2027",               "platform": "devto_article", "scrape_type": 2},
-        {"site": "reddit.com/r/webdev",      "keyword": "how to implement robust authentication in Next.js", "platform": "devto_article", "scrape_type": 2},
-        {"site": "stackoverflow.com",        "keyword": "designing scalable REST APIs",                     "platform": "devto_article", "scrape_type": 2},
-        {"site": "news.ycombinator.com",     "keyword": "optimizing postgres database queries",             "platform": "devto_article", "scrape_type": 2},
-        
-        # GitHub Gist Targets
-        {"site": "stackoverflow.com",        "keyword": "python asyncio rate limiter decorator example",    "platform": "github_gist",   "scrape_type": 2},
-        {"site": "news.ycombinator.com",     "keyword": "python clean architecture repository pattern",     "platform": "github_gist",   "scrape_type": 2},
-        {"site": "stackoverflow.com",        "keyword": "react custom hook for localstorage syncing",       "platform": "github_gist",   "scrape_type": 2},
-        {"site": "reddit.com/r/programming", "keyword": "golang concurrent worker pool implementation",     "platform": "github_gist",   "scrape_type": 2},
-        {"site": "stackoverflow.com",        "keyword": "docker compose local development setup for nodejs", "platform": "github_gist",   "scrape_type": 2},
-        
-        # Medium Targets
-        {"site": "news.ycombinator.com",     "keyword": "how AI replaces software engineers 2026",          "platform": "medium",        "scrape_type": 2},
-        {"site": "reddit.com/r/programming", "keyword": "future of web development frameworks",             "platform": "medium",        "scrape_type": 2},
-        {"site": "news.ycombinator.com",     "keyword": "why we moved from microservices back to monolith", "platform": "medium",        "scrape_type": 2},
-        {"site": "reddit.com/r/SaaS",        "keyword": "building an AI agent for customer support",        "platform": "medium",        "scrape_type": 2},
-        {"site": "news.ycombinator.com",     "keyword": "the real cost of cloud infrastructure in 2025",    "platform": "medium",        "scrape_type": 2},
-        
-        # Hashnode Targets
-        {"site": "news.ycombinator.com",     "keyword": "scaling postgres database replication",            "platform": "hashnode",      "scrape_type": 2},
-        {"site": "stackoverflow.com",        "keyword": "react server components best practices",           "platform": "hashnode",      "scrape_type": 2},
-        {"site": "reddit.com/r/programming", "keyword": "rust versus go for backend microservices",         "platform": "hashnode",      "scrape_type": 2},
-    ]
+    # Round-robin interleave: pick 1 from each platform in turn
+    all_discovered = []
+    platforms = list(items_by_platform.keys())
+    max_len = max(len(v) for v in items_by_platform.values())
+    for i in range(max_len):
+        for p in platforms:
+            lst = items_by_platform[p]
+            if i < len(lst):
+                all_discovered.append(lst[i])
 
-    print(f"[*] Running SERP discovery across {len(serp_targets)} query target(s)...")
+    print(f"[*] Total {len(all_discovered)} items queued in round-robin order across {len(platforms)} platforms")
 
-    all_discovered_items = []
-    
-    for target in serp_targets:
-        query = serp.generate_dork(target["site"], target["keyword"])
-        items = serp.fetch_results(query, max_results=10)
-        for item in items:
-            # Attach target info to the item so we can process it later
-            item["_target_platform"] = target["platform"]
-            item["_target_scrape_type"] = target["scrape_type"]
-            all_discovered_items.append(item)
-            
-    # Shuffle the items so the LLM pipeline gets a healthy mix of platforms
-    print(f"[*] Discovered {len(all_discovered_items)} items. Shuffling before queueing...")
-    random.shuffle(all_discovered_items)
-    
-    # Now process them in randomized order
-    for item in all_discovered_items:
+    for item in all_discovered:
         pipeline.process_item(item, platform=item["_target_platform"], scrape_type=item["_target_scrape_type"])
 
     pipeline.close()

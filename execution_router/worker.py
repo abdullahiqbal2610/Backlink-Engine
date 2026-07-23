@@ -184,13 +184,24 @@ def main():
                     try:
                         conn = get_db_connection()
                         with conn.cursor() as cur:
+                            # Ensure the thread exists (upsert) to satisfy foreign key
+                            cur.execute("""
+                                INSERT INTO platforms (name, scrape_type, posting_type) 
+                                VALUES (%s, 'API', 'C') ON CONFLICT (name) DO NOTHING
+                            """, (platform,))
+                            cur.execute("""
+                                INSERT INTO threads (thread_id, platform, url, title, status)
+                                VALUES (%s, %s, %s, %s, 'posted')
+                                ON CONFLICT (thread_id) DO UPDATE SET status='posted', updated_at=CURRENT_TIMESTAMP
+                            """, (thread_id, platform, url, url))
                             cur.execute("""
                                 INSERT INTO post_results (thread_id, post_status, post_url, posted_at)
                                 VALUES (%s, 'success', %s, CURRENT_TIMESTAMP)
+                                ON CONFLICT DO NOTHING
                             """, (thread_id, live_url))
                         conn.commit()
                         conn.close()
-                        print(f"    [+] Saved live URL: {live_url}")
+                        print(f"    [+] Saved live URL to DB: {live_url}")
                     except Exception as e:
                         print(f"    [-] Failed to save post_result to DB: {e}")
                 
