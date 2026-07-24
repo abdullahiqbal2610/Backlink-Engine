@@ -113,9 +113,13 @@ def main():
             try:
                 conn = get_db_connection()
                 with conn.cursor() as cur:
-                    cur.execute("SELECT 1 FROM post_results WHERE thread_id = %s AND post_status = 'success'", (thread_id,))
+                    cur.execute("""
+                        SELECT 1 FROM post_results pr 
+                        JOIN threads t ON pr.thread_id = t.thread_id 
+                        WHERE t.url = %s AND pr.post_status = 'success'
+                    """, (payload.get("url"),))
                     if cur.fetchone():
-                        print(f"[!] Thread {thread_id} already posted. Skipping to prevent duplicate.")
+                        print(f"[!] Thread {payload.get('url')} already posted. Skipping to prevent duplicate.")
                         conn.close()
                         continue
                 conn.close()
@@ -194,22 +198,29 @@ def main():
                                 INSERT INTO platforms (name, scrape_type, posting_type) 
                                 VALUES (%s, 'API', 'C') ON CONFLICT (name) DO NOTHING
                             """, (platform,))
-                            # Try insert, ignore all duplicate conflicts (thread_id or url)
-                            cur.execute("""
-                                INSERT INTO threads (thread_id, platform, url, title, status)
-                                VALUES (%s, %s, %s, %s, 'posted')
-                                ON CONFLICT DO NOTHING
-                            """, (thread_id, platform, url, url))
-                            # Always mark status as posted regardless
-                            cur.execute("""
-                                UPDATE threads SET status='posted', updated_at=CURRENT_TIMESTAMP
-                                WHERE thread_id=%s OR url=%s
-                            """, (thread_id, url))
+                            # Try to get existing thread_id for this URL
+                            cur.execute("SELECT thread_id FROM threads WHERE url = %s", (url,))
+                            existing_thread = cur.fetchone()
+                            
+                            if existing_thread:
+                                actual_thread_id = existing_thread[0]
+                                cur.execute("""
+                                    UPDATE threads SET status='posted', updated_at=CURRENT_TIMESTAMP
+                                    WHERE thread_id=%s
+                                """, (actual_thread_id,))
+                            else:
+                                actual_thread_id = thread_id
+                                cur.execute("""
+                                    INSERT INTO threads (thread_id, platform, url, title, status)
+                                    VALUES (%s, %s, %s, %s, 'posted')
+                                    ON CONFLICT DO NOTHING
+                                """, (thread_id, platform, url, url))
+                            
                             cur.execute("""
                                 INSERT INTO post_results (thread_id, post_status, post_url, posted_at)
                                 SELECT %s, 'success', %s, CURRENT_TIMESTAMP
                                 WHERE NOT EXISTS (SELECT 1 FROM post_results WHERE post_url=%s)
-                            """, (thread_id, live_url, live_url))
+                            """, (actual_thread_id, live_url, live_url))
                         conn.commit()
                         conn.close()
                         print(f"    [+] Saved live URL to DB: {live_url}")

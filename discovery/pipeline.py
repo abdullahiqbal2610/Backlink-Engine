@@ -104,7 +104,9 @@ class DiscoveryPipeline:
         
         # Push to Redis Queue
         try:
-            self.redis_client.lpush("discovery_queue", json.dumps(payload))
+            queue_name = f"discovery_queue_{platform}"
+            self.redis_client.lpush(queue_name, json.dumps(payload))
+            self.redis_client.sadd("active_discovery_queues", queue_name)
             print(f"[+] Queued new opportunity: {payload['title'][:50]}... ({url})")
         except Exception as e:
             print(f"[-] Error pushing to Redis: {e}")

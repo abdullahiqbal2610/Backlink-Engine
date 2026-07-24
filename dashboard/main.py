@@ -60,9 +60,9 @@ async def upload_cookies(platform: str, file: UploadFile = File(...)):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON file")
         
-    # Store JSON string in Redis
+    # Store JSON in Redis
     try:
-        r.set(f"cookies_{platform}", content.decode('utf-8'))
+        r.set(f"cookies_{platform}", content)
         return {"status": "success", "message": f"{platform} cookies uploaded to Redis successfully!"}
     except Exception as e:
         # Fallback to local disk for local testing if Redis fails
