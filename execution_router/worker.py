@@ -89,7 +89,9 @@ def log_to_google_sheet(platform: str, live_url: str, account_used: str):
         print(f"    [+] Logged to Google Sheets: row {next_row}")
         
     except Exception as e:
-        print(f"    [-] Failed to log to Google Sheets: {type(e).__name__} - {str(e)} - repr: {repr(e)}")
+        import traceback
+        print(f"    [-] Failed to log to Google Sheets: {type(e).__name__} - repr: {repr(e)}")
+        print(f"    [!] Traceback: {traceback.format_exc()}")
 
 
 
