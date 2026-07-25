@@ -43,8 +43,12 @@ A fully autonomous, AI-driven engine for generating high-quality backlinks and e
    ```
 
 2. **Set up the environment:**
-   Create a `.env` file based on `.env.example` and fill in your API keys and tokens.
+   The codebase uses an automated environment switching system across branches:
+   - Create a `.env.local` file for your local database/redis connections (used on `main` branch).
+   - Create a `.env.cloud` file for your cloud/Neon/Upstash connections (used on `branch1` deployed version).
+   - **Magic Git Hook**: A post-checkout git hook automatically copies the correct file into `.env` whenever you switch between `main` and `branch1`. You never have to manually edit database variables!
 
+   *Note: Ensure all API keys (Gemini, Dev.to, etc.) are present in both `.env.local` and `.env.cloud`.*
 3. **Install dependencies:**
    ```bash
    pip install -r requirements.txt

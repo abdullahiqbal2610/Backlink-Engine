@@ -1,7 +1,8 @@
 # Environment Variables
 .env
 .env.local
-
+.env.cloud
+*.env
 # Python
 __pycache__/
 *.py[cod]
