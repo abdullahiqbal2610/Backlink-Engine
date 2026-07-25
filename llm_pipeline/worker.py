@@ -72,8 +72,26 @@ class LlmWorker:
                     is_paused = True
                     continue
 
-            # Block until an item is available in the queue (timeout 5s)
-            item = self.redis_client.brpop("discovery_queue", timeout=5)
+            # Get list of active platform queues for round-robin
+            active_queues = [q.decode('utf-8') for q in self.redis_client.smembers("active_discovery_queues")]
+            if "discovery_queue" not in active_queues:
+                active_queues.append("discovery_queue") # Always check legacy queue
+                
+            active_queues.sort()
+            
+            # Rotate queues for round robin
+            if not hasattr(self, 'queue_index'):
+                self.queue_index = 0
+                
+            if len(active_queues) > 0:
+                self.queue_index = self.queue_index % len(active_queues)
+                rotated_queues = active_queues[self.queue_index:] + active_queues[:self.queue_index]
+                self.queue_index += 1
+            else:
+                rotated_queues = ["discovery_queue"]
+
+            # Block until an item is available in any of the rotated queues (timeout 5s)
+            item = self.redis_client.brpop(rotated_queues, timeout=5)
             
             if not item:
                 # No items, loop again

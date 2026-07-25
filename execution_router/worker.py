@@ -69,7 +69,7 @@ def log_to_google_sheet(platform: str, live_url: str, account_used: str):
         creds = Credentials.from_service_account_file(creds_path, scopes=scopes)
         client = gspread.authorize(creds)
         
-        sheet = client.open_by_key(sheet_id).sheet1
+        sheet = client.open_by_key(sheet_id).worksheet("Abdullah backlinks")
         
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
