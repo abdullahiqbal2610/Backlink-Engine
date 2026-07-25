@@ -63,14 +63,17 @@ def health_check():
 
 @app.get("/api/autonomous/status")
 def get_autonomous_status():
-    status = os.getenv("AUTONOMOUS_MODE", "false").lower() == "true"
-    return {"enabled": status}
+    status = r.get("AUTONOMOUS_MODE")
+    if status is None:
+        status_bool = os.getenv("AUTONOMOUS_MODE", "false").lower() == "true"
+    else:
+        status_bool = status.decode("utf-8") == "true"
+    return {"enabled": status_bool}
 
 @app.post("/api/autonomous/toggle")
 def toggle_autonomous(action: ToggleAction):
     val = "true" if action.enabled else "false"
-    set_key(dotenv_path, "AUTONOMOUS_MODE", val)
-    os.environ["AUTONOMOUS_MODE"] = val
+    r.set("AUTONOMOUS_MODE", val)
     return {"status": "success", "enabled": action.enabled}
 
 @app.get("/api/reviews")

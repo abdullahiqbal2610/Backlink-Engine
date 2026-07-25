@@ -131,7 +131,12 @@ class LlmWorker:
             self.update_thread_status(thread_id, True, "drafted")
             
             # 4. Route Output
-            autonomous_mode = os.getenv("AUTONOMOUS_MODE", "false").lower() == "true"
+            auto_val = self.redis_client.get("AUTONOMOUS_MODE")
+            if auto_val is None:
+                autonomous_mode = os.getenv("AUTONOMOUS_MODE", "false").lower() == "true"
+            else:
+                autonomous_mode = auto_val.decode('utf-8') == "true"
+                
             is_auto_approved = autonomous_mode and platform in ["devto_article", "github_gist", "medium", "hashnode"]
             
             contract_b = {
