@@ -50,6 +50,9 @@ def run_discovery():
         {"site": "reddit.com/r/webdev",      "keyword": "how to implement robust authentication in Next.js", "platform": "devto_article", "scrape_type": 2},
         {"site": "stackoverflow.com",        "keyword": "designing scalable REST APIs",                     "platform": "devto_article", "scrape_type": 2},
         {"site": "news.ycombinator.com",     "keyword": "optimizing postgres database queries",             "platform": "devto_article", "scrape_type": 2},
+        {"site": "dev.to",                   "keyword": "event driven architecture kafka python",           "platform": "devto_article", "scrape_type": 2},
+        {"site": "reddit.com/r/reactjs",     "keyword": "graphql vs rest for new startups",                 "platform": "devto_article", "scrape_type": 2},
+        {"site": "stackoverflow.com",        "keyword": "deploying nodejs to aws ecs guide",                "platform": "devto_article", "scrape_type": 2},
         
         # GitHub Gist Targets
         {"site": "stackoverflow.com",        "keyword": "python asyncio rate limiter decorator example",    "platform": "github_gist",   "scrape_type": 2},
@@ -57,6 +60,8 @@ def run_discovery():
         {"site": "stackoverflow.com",        "keyword": "react custom hook for localstorage syncing",       "platform": "github_gist",   "scrape_type": 2},
         {"site": "reddit.com/r/programming", "keyword": "golang concurrent worker pool implementation",     "platform": "github_gist",   "scrape_type": 2},
         {"site": "stackoverflow.com",        "keyword": "docker compose local development setup for nodejs", "platform": "github_gist",   "scrape_type": 2},
+        {"site": "gist.github.com",          "keyword": "python retry decorator exponential backoff",       "platform": "github_gist",   "scrape_type": 2},
+        {"site": "gist.github.com",          "keyword": "react useDebounce custom hook typescript",         "platform": "github_gist",   "scrape_type": 2},
         
         # Medium Targets
         {"site": "news.ycombinator.com",     "keyword": "how AI replaces software engineers 2026",          "platform": "medium",        "scrape_type": 2},
@@ -64,16 +69,25 @@ def run_discovery():
         {"site": "news.ycombinator.com",     "keyword": "why we moved from microservices back to monolith", "platform": "medium",        "scrape_type": 2},
         {"site": "reddit.com/r/SaaS",        "keyword": "building an AI agent for customer support",        "platform": "medium",        "scrape_type": 2},
         {"site": "news.ycombinator.com",     "keyword": "the real cost of cloud infrastructure in 2025",    "platform": "medium",        "scrape_type": 2},
+        {"site": "medium.com",               "keyword": "managing distributed engineering teams remote",    "platform": "medium",        "scrape_type": 2},
+        {"site": "medium.com",               "keyword": "the true cost of technical debt startups",         "platform": "medium",        "scrape_type": 2},
+        {"site": "medium.com",               "keyword": "the rise of ai agents in production systems",      "platform": "medium",        "scrape_type": 2},
+        {"site": "reddit.com/r/devops",      "keyword": "from monolith to serverless architecture",         "platform": "medium",        "scrape_type": 2},
         
         # Hashnode Targets
         {"site": "news.ycombinator.com",     "keyword": "scaling postgres database replication",            "platform": "hashnode",      "scrape_type": 2},
         {"site": "stackoverflow.com",        "keyword": "react server components best practices",           "platform": "hashnode",      "scrape_type": 2},
         {"site": "reddit.com/r/programming", "keyword": "rust versus go for backend microservices",         "platform": "hashnode",      "scrape_type": 2},
+        {"site": "hashnode.com",             "keyword": "building resilient python backend services",       "platform": "hashnode",      "scrape_type": 2},
+        {"site": "hashnode.com",             "keyword": "understanding docker networking tutorial",         "platform": "hashnode",      "scrape_type": 2},
         
         # Open Discovery Targets (Unknown Domains)
         {"site": None, "keyword": '"write for us" "software engineering"', "platform": "unknown", "scrape_type": 4},
         {"site": None, "keyword": '"submit a guest post" "backend development"', "platform": "unknown", "scrape_type": 4},
         {"site": None, "keyword": '"contribute an article" "machine learning"', "platform": "unknown", "scrape_type": 4},
+        {"site": None, "keyword": '"guest post guidelines" "artificial intelligence"', "platform": "unknown", "scrape_type": 4},
+        {"site": None, "keyword": '"write for us" "cloud computing"', "platform": "unknown", "scrape_type": 4},
+        {"site": None, "keyword": '"submit an article" "startup founders"', "platform": "unknown", "scrape_type": 4},
     ]
 
     print(f"[*] Running SERP discovery across {len(serp_targets)} query target(s)...")

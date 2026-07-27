@@ -112,7 +112,12 @@ class LlmWorker:
                 print(f"\n[>] Processing thread: {title[:30].encode('ascii', 'ignore').decode()}... ({platform})")
             
             # 1. Relevance Check
-            is_relevant = self.relevance_agent.is_relevant(title, body, platform)
+            scrape_type = payload.get("scrape_type")
+            if scrape_type == 4:
+                print("   [~] Open Discovery Guest Post: Bypassing relevance check.")
+                is_relevant = True
+            else:
+                is_relevant = self.relevance_agent.is_relevant(title, body, platform)
             
             if not is_relevant:
                 print("   [x] Decision: IRRELEVANT. Archiving.")

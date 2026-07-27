@@ -310,11 +310,11 @@ def approve_discovered_platform(action: DiscoveredPlatformAction):
         conn = get_db_connection()
         with conn.cursor() as cur:
             # 1. Get the platform info
-            cur.execute("SELECT domain, guidelines FROM discovered_platforms WHERE id = %s", (action.id,))
+            cur.execute("SELECT domain, guidelines, sample_url, ai_summary FROM discovered_platforms WHERE id = %s", (action.id,))
             row = cur.fetchone()
             if not row:
                 raise HTTPException(status_code=404, detail="Discovered platform not found")
-            domain, guidelines = row
+            domain, guidelines, sample_url, ai_summary = row
             
             # 2. Insert into main platforms table
             # Assuming 'HTML' and 'A' as defaults for LLM parsed platforms
@@ -335,6 +335,35 @@ def approve_discovered_platform(action: DiscoveredPlatformAction):
                 
             # 4. Mark as approved
             cur.execute("UPDATE discovered_platforms SET status = 'approved' WHERE id = %s", (action.id,))
+            
+            # 5. Kickstart the drafter by pushing the sample URL to the discovery queue
+            if sample_url:
+                import uuid
+                from datetime import datetime, timezone
+                thread_id = str(uuid.uuid4())
+                title = "The Future of Remote Engineering Teams and AI"
+                body_context = f"Site Context: {ai_summary}\n\nPlease write a comprehensive guest post about hiring remote developers, scaling engineering teams, and integrating AI."
+                
+                cur.execute(
+                    "INSERT INTO threads (thread_id, platform, url, title, status) VALUES (%s, %s, %s, %s, 'discovered') ON CONFLICT DO NOTHING",
+                    (thread_id, platform_name, sample_url, title)
+                )
+                
+                contract_a = {
+                    "thread_id": thread_id,
+                    "platform": platform_name,
+                    "url": sample_url,
+                    "title": title,
+                    "body": body_context,
+                    "author": "unknown",
+                    "posted_at": datetime.now(timezone.utc).isoformat(),
+                    "scraped_at": datetime.now(timezone.utc).isoformat(),
+                    "scrape_type": 4,
+                    "community_guidelines": guidelines,
+                    "guidelines_version": "1.0"
+                }
+                r.lpush(f"discovery_queue_{platform_name}", json.dumps(contract_a))
+                r.sadd("active_discovery_queues", f"discovery_queue_{platform_name}")
             
         conn.commit()
         conn.close()

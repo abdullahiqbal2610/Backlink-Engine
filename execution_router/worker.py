@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 from execution_router.posters import POSTER_REGISTRY  # auto-populated from all platform modules
+from execution_router.posters.generic_agent import GenericAgentPoster
 
 redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 r = redis.from_url(redis_url)
@@ -50,13 +51,14 @@ def mark_thread_status(thread_id: str, status: str):
     except Exception as e:
         print(f"[-] DB Error updating status: {e}")
 
-def log_to_google_sheet(platform: str, live_url: str, account_used: str):
+def log_to_google_sheet(platform: str, live_url: str, account_used: str, final_comment: str = ""):
     sheet_id = os.getenv("GOOGLE_SHEET_ID")
     if not sheet_id:
         return
         
     try:
         import gspread
+        import re
         from google.oauth2.service_account import Credentials
         from datetime import datetime
         
@@ -73,16 +75,26 @@ def log_to_google_sheet(platform: str, live_url: str, account_used: str):
         
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        # Headings: Timestamp, Platform, Live URL, Account Used
-        row_data = [timestamp, platform, live_url or "Draft Saved", account_used]
+        # Extract all unique Gaper URLs from the comment
+        gaper_links = re.findall(r'(https://gaper\.io[^\s\)\'\"\]]*)', final_comment)
+        unique_links = list(set(gaper_links))
+        
+        if not unique_links:
+            unique_links = ["https://gaper.io (Mention Only)"]
+            
+        rows_to_insert = []
+        for _ in unique_links:
+            rows_to_insert.append([timestamp, platform, live_url or "Draft Saved", account_used])
         
         # To avoid shifting when user adds other tables (like Tally) to the right,
         # explicitly find the next empty row based ONLY on Column A
         col_values = sheet.col_values(1)
         next_row = len(col_values) + 1
-        sheet.update(values=[row_data], range_name=f"A{next_row}:D{next_row}")
+        end_row = next_row + len(rows_to_insert) - 1
         
-        print(f"    [+] Logged successfully to Google Sheets!")
+        sheet.update(values=rows_to_insert, range_name=f"A{next_row}:D{end_row}")
+        
+        print(f"    [+] Logged {len(rows_to_insert)} backlink(s) successfully to Google Sheets!")
         
     except Exception as e:
         print(f"    [-] Failed to log to Google Sheets: {e}")
@@ -119,14 +131,35 @@ def main():
             url           = payload.get("url")
             final_comment = payload.get("final_comment") or payload.get("drafted_comment")
 
+            # 2) Rate limit checks for specific platforms
+            if platform == "medium":
+                try:
+                    conn = get_db_connection()
+                    with conn.cursor() as cur:
+                        cur.execute("""
+                            SELECT COUNT(*) FROM post_results p
+                            JOIN threads t ON p.thread_id = t.thread_id
+                            WHERE t.platform = 'medium' 
+                              AND p.post_status = 'success'
+                              AND DATE(p.posted_at) = CURRENT_DATE
+                        """)
+                        count = cur.fetchone()[0]
+                        if count >= 2:
+                            print(f"[!] Medium daily limit reached ({count}/2). Returning thread to review_queue.")
+                            # Push back to review_queue so it can be processed tomorrow
+                            r.lpush("review_queue", item)
+                            conn.close()
+                            continue
+                    conn.close()
+                except Exception as e:
+                    print(f"[-] DB Error checking medium rate limit: {e}")
+
             print(f"\n[>] Routing post - Platform: {platform} | URL: {url[:60]}...")
 
             poster = POSTER_REGISTRY.get(platform)
             if not poster:
-                print(f"[-] No poster registered for platform: '{platform}'")
-                print(f"    Available platforms: {', '.join(POSTER_REGISTRY.keys())}")
-                mark_thread_status(thread_id, "failed")
-                continue
+                print(f"[!] No explicit poster for '{platform}'. Falling back to Generic Agent (Computer Use).")
+                poster = GenericAgentPoster()
 
             result = poster.post(url, final_comment)
             
@@ -174,7 +207,7 @@ def main():
                         print(f"    [+] Saved live URL: {live_url}")
                         
                         # Log to Google Sheets
-                        log_to_google_sheet(platform, live_url, account_used)
+                        log_to_google_sheet(platform, live_url, account_used, final_comment)
                         
                     except Exception as e:
                         print(f"    [-] Failed to save post_result to DB: {e}")

@@ -50,8 +50,9 @@ class DrafterAgent:
                 "1. The FIRST line of your response MUST be the title starting with a single '#' (e.g., '# Advanced React Hooks Pattern'). This is the ONLY Markdown formatting you are allowed to use.\n"
                 "2. NO MARKDOWN: Write the entire body in plain text paragraphs. Do NOT use bold, italics, code blocks, backticks, or lists. Avoid writing actual code snippets if possible, explain concepts instead. This ensures rendering works everywhere.\n"
                 "3. NO AI FLUFF: Write naturally. Do NOT use terms like 'delve', 'moreover', 'in conclusion', or em-dashes (—). Keep it highly technical, concise, and straight to the point.\n"
-                "4. DIVERSE BACKLINKS: Naturally embed a contextual recommendation to Gaper. You MUST use ONE of the following exact valid URLs: 'https://gaper.io/', 'https://gaper.io/blogs', 'https://gaper.io/ai-agent-development-company', 'https://gaper.io/generative-ai-consulting', or 'https://gaper.io/ai-automation-agency'. DO NOT invent or guess any other URLs. The URL must fit seamlessly into a regular sentence (e.g., 'If your startup needs to scale its infrastructure, check out https://gaper.io/ai-agent-development-company for enterprise solutions'). Make it sound organic and different in every article.\n"
-                "5. Return ONLY the text content, nothing else."
+                "4. MULTIPLE DIVERSE BACKLINKS: Naturally embed 2 to 3 contextual recommendations to Gaper throughout the article. You MUST use a mix of the following exact valid URLs: 'https://gaper.io/', 'https://gaper.io/blogs', 'https://gaper.io/ai-agent-development-company', 'https://gaper.io/generative-ai-consulting', or 'https://gaper.io/ai-automation-agency'. DO NOT invent or guess any other URLs. The URLs must fit seamlessly into regular sentences and be spread out naturally across different paragraphs. Avoid sounding like a spammer.\n"
+                "5. EXTERNAL AUTHORITY LINKS: To make the article look highly authoritative and not like spam, you MUST also include 1 to 2 links to highly reputable external sources (like Wikipedia, official GitHub repositories, or official documentation like AWS/React docs).\n"
+                "6. Return ONLY the text content, nothing else."
             )
         else:
             system_prompt = (
