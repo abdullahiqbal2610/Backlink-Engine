@@ -60,3 +60,14 @@ CREATE TABLE IF NOT EXISTS cookie_vault (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (platform, account_username)
 );
+
+-- 7. discovered_platforms: new sites discovered by LLM parser
+CREATE TABLE IF NOT EXISTS discovered_platforms (
+    id SERIAL PRIMARY KEY,
+    domain VARCHAR(255) UNIQUE NOT NULL,
+    sample_url TEXT,
+    ai_summary TEXT,
+    guidelines TEXT,
+    status VARCHAR(50) DEFAULT 'pending',
+    discovered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

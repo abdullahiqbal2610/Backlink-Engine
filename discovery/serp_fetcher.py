@@ -14,7 +14,9 @@ class SerpFetcher:
 
     def generate_dork(self, site: str, keyword: str) -> str:
         """Generates a search query for a specific site and keyword."""
-        return f'site:{site} {keyword}'
+        if site:
+            return f'site:{site} {keyword}'
+        return keyword
 
     def fetch_results(self, query: str, max_results: int = 10) -> List[Dict]:
         """Fetches SERP results for the given query using Serper API."""

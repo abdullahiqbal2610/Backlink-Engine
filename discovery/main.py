@@ -69,6 +69,11 @@ def run_discovery():
         {"site": "news.ycombinator.com",     "keyword": "scaling postgres database replication",            "platform": "hashnode",      "scrape_type": 2},
         {"site": "stackoverflow.com",        "keyword": "react server components best practices",           "platform": "hashnode",      "scrape_type": 2},
         {"site": "reddit.com/r/programming", "keyword": "rust versus go for backend microservices",         "platform": "hashnode",      "scrape_type": 2},
+        
+        # Open Discovery Targets (Unknown Domains)
+        {"site": None, "keyword": '"write for us" "software engineering"', "platform": "unknown", "scrape_type": 4},
+        {"site": None, "keyword": '"submit a guest post" "backend development"', "platform": "unknown", "scrape_type": 4},
+        {"site": None, "keyword": '"contribute an article" "machine learning"', "platform": "unknown", "scrape_type": 4},
     ]
 
     print(f"[*] Running SERP discovery across {len(serp_targets)} query target(s)...")

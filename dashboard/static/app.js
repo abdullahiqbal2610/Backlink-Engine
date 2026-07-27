@@ -21,19 +21,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Tab switching helper
-    const tabs = ['pending', 'published', 'approved', 'rejected', 'analytics'];
-    function switchTab(activeTabId) {
+    const tabs = ['pending', 'published', 'approved', 'rejected', 'analytics', 'discovered'];
+    function switchTab(navId) {
         tabs.forEach(t => {
-            document.getElementById(`nav-${t}`).classList.remove('active');
-            const container = document.getElementById(t === 'pending' ? 'cards-container' : `${t}-container`);
+            const navEl = document.getElementById(`nav-${t}`);
+            if (navEl) navEl.classList.remove('active');
+            
+            const container = document.getElementById(t === 'pending' ? 'cards-container' : (t === 'approved' || t === 'rejected' ? 'history-container' : `${t}-container`));
             if(container) container.classList.add('hidden');
         });
         
-        document.getElementById(`nav-${activeTabId}`).classList.add('active');
-        const activeContainer = document.getElementById(activeTabId === 'pending' ? 'cards-container' : `${activeTabId}-container`);
+        const activeNavEl = document.getElementById(`nav-${navId}`);
+        if (activeNavEl) activeNavEl.classList.add('active');
+        
+        const activeContainer = document.getElementById(navId === 'pending' ? 'cards-container' : (navId === 'approved' || navId === 'rejected' ? 'history-container' : `${navId}-container`));
         if(activeContainer) activeContainer.classList.remove('hidden');
-        document.getElementById('header-stats').style.display = activeTabId === 'pending' ? 'block' : 'none';
+        
+        const headerStats = document.getElementById('header-stats');
+        if (headerStats) {
+            headerStats.style.display = navId === 'pending' ? 'block' : 'none';
+        }
     }
 
     document.getElementById('nav-pending').addEventListener('click', (e) => {
@@ -54,8 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     document.getElementById('nav-approved').addEventListener('click', (e) => {
         e.preventDefault();
-        switchTab('history'); // We reuse history container
-        document.getElementById('nav-approved').classList.add('active');
+        switchTab('approved');
         document.getElementById('page-title').textContent = 'Approved History';
         document.getElementById('page-subtitle').textContent = 'Drafts that were approved and sent to the posting queue.';
         fetchHistory('approved');
@@ -63,11 +69,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('nav-rejected').addEventListener('click', (e) => {
         e.preventDefault();
-        switchTab('history');
-        document.getElementById('nav-rejected').classList.add('active');
+        switchTab('rejected');
         document.getElementById('page-title').textContent = 'Rejected History';
         document.getElementById('page-subtitle').textContent = 'Drafts that were rejected and archived.';
         fetchHistory('rejected');
+    });
+
+    document.getElementById('nav-discovered').addEventListener('click', (e) => {
+        e.preventDefault();
+        switchTab('discovered');
+        document.getElementById('page-title').textContent = 'Discovered Sites';
+        document.getElementById('page-subtitle').textContent = 'Review AI-parsed unknown domains to activate them for posting.';
+        fetchDiscoveredSites();
     });
 
     document.getElementById('nav-analytics').addEventListener('click', (e) => {
@@ -380,5 +393,77 @@ async function fetchAnalytics() {
         
     } catch(e) {
         console.error("Failed to load analytics", e);
+    }
+}
+
+async function fetchDiscoveredSites() {
+    const grid = document.getElementById('discovered-grid');
+    const loading = document.getElementById('discovered-loading');
+    
+    grid.innerHTML = '';
+    loading.classList.remove('hidden');
+    
+    try {
+        const response = await fetch('/api/discovered_platforms');
+        const data = await response.json();
+        const sites = data.platforms || [];
+        
+        loading.classList.add('hidden');
+        
+        if (sites.length === 0) {
+            grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 3rem; color: #8b92a5;">No new sites discovered yet.</div>';
+            return;
+        }
+
+        sites.forEach((site, index) => {
+            const card = document.createElement('div');
+            card.className = 'review-card';
+            card.style.animationDelay = `${index * 0.05}s`;
+            
+            card.innerHTML = `
+                <div class="card-header">
+                    <span class="platform-badge">${site.domain}</span>
+                    <a href="${site.sample_url}" target="_blank" class="thread-link">Sample URL ↗</a>
+                </div>
+                <div style="padding: 1rem 0;">
+                    <h4 style="margin:0 0 0.5rem 0; color: #fff;">AI Analysis Summary</h4>
+                    <p style="color: #cbd5e1; font-size: 0.9rem; line-height: 1.5; margin-bottom: 1rem;">${site.ai_summary || 'No summary available.'}</p>
+                </div>
+                <div class="card-actions">
+                    <button class="btn-approve" onclick="handleDiscoveredAction('${site.id}', 'approve')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        Approve Target
+                    </button>
+                    <button class="btn-reject" onclick="handleDiscoveredAction('${site.id}', 'reject')">
+                        Reject
+                    </button>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+
+    } catch (error) {
+        console.error('Error:', error);
+        loading.classList.add('hidden');
+        grid.innerHTML = '<p style="color: #ef4444;">Failed to load discovered sites.</p>';
+    }
+}
+
+async function handleDiscoveredAction(siteId, action) {
+    try {
+        const response = await fetch(`/api/discovered_platforms/${action}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: siteId })
+        });
+        
+        if (response.ok) {
+            fetchDiscoveredSites();
+        } else {
+            alert('Action failed. Please try again.');
+        }
+    } catch (error) {
+        console.error('Error action:', error);
+        alert('Network error.');
     }
 }

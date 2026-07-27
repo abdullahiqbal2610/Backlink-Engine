@@ -94,15 +94,21 @@ class DiscoveryPipeline:
         # Normalize
         payload = self.normalize_to_contract_a(item, platform, scrape_type)
         
-        # Save to DB to mark as discovered
-        self.insert_thread_record(payload["thread_id"], platform, url, payload["title"])
+        # Save to DB to mark as discovered (only for known platforms)
+        if platform != "unknown":
+            self.insert_thread_record(payload["thread_id"], platform, url, payload["title"])
         
         # Push to Redis Queue
         try:
-            queue_name = f"discovery_queue_{platform}"
-            self.redis_client.lpush(queue_name, json.dumps(payload))
-            self.redis_client.sadd("active_discovery_queues", queue_name)
-            print(f"[+] Queued new opportunity: {payload['title'][:50]}... ({url})")
+            if platform == "unknown":
+                queue_name = "llm_parser_queue"
+                self.redis_client.lpush(queue_name, json.dumps(payload))
+                print(f"[+] Queued for LLM parser: {payload['title'][:50]}... ({url})")
+            else:
+                queue_name = f"discovery_queue_{platform}"
+                self.redis_client.lpush(queue_name, json.dumps(payload))
+                self.redis_client.sadd("active_discovery_queues", queue_name)
+                print(f"[+] Queued new opportunity: {payload['title'][:50]}... ({url})")
         except Exception as e:
             print(f"[-] Error pushing to Redis: {e}")
 

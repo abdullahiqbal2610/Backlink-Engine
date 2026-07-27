@@ -271,6 +271,91 @@ def get_analytics():
         
     return stats
 
+class DiscoveredPlatformAction(BaseModel):
+    id: int
+
+@app.get("/api/discovered_platforms")
+def get_discovered_platforms():
+    """Fetch all pending discovered platforms"""
+    results = []
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, domain, sample_url, ai_summary, guidelines, discovered_at 
+                FROM discovered_platforms 
+                WHERE status = 'pending'
+                ORDER BY discovered_at DESC
+            """)
+            rows = cur.fetchall()
+            for row in rows:
+                results.append({
+                    "id": row[0],
+                    "domain": row[1],
+                    "sample_url": row[2],
+                    "ai_summary": row[3],
+                    "guidelines": row[4],
+                    "discovered_at": row[5].isoformat() if row[5] else None
+                })
+        conn.close()
+    except Exception as e:
+        print(f"DB Error fetching discovered platforms: {e}")
+        return {"status": "error", "message": str(e)}
+        
+    return {"platforms": results}
+
+@app.post("/api/discovered_platforms/approve")
+def approve_discovered_platform(action: DiscoveredPlatformAction):
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            # 1. Get the platform info
+            cur.execute("SELECT domain, guidelines FROM discovered_platforms WHERE id = %s", (action.id,))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Discovered platform not found")
+            domain, guidelines = row
+            
+            # 2. Insert into main platforms table
+            # Assuming 'HTML' and 'A' as defaults for LLM parsed platforms
+            platform_name = domain.replace('.', '_')
+            cur.execute("""
+                INSERT INTO platforms (name, scrape_type, posting_type) 
+                VALUES (%s, 'HTML', 'A') 
+                ON CONFLICT (name) DO NOTHING
+            """, (platform_name,))
+            
+            # 3. Insert guidelines if any
+            if guidelines:
+                cur.execute("""
+                    INSERT INTO platform_guidelines (platform, url, rules_text) 
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (platform) DO UPDATE SET rules_text = EXCLUDED.rules_text
+                """, (platform_name, f"https://{domain}", guidelines))
+                
+            # 4. Mark as approved
+            cur.execute("UPDATE discovered_platforms SET status = 'approved' WHERE id = %s", (action.id,))
+            
+        conn.commit()
+        conn.close()
+        return {"status": "success"}
+    except Exception as e:
+        print(f"DB Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/discovered_platforms/reject")
+def reject_discovered_platform(action: DiscoveredPlatformAction):
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute("UPDATE discovered_platforms SET status = 'rejected' WHERE id = %s", (action.id,))
+        conn.commit()
+        conn.close()
+        return {"status": "success"}
+    except Exception as e:
+        print(f"DB Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Mount static files for the frontend
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if not os.path.exists(static_dir):
