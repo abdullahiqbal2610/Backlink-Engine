@@ -92,12 +92,22 @@ def log_to_google_sheet(platform: str, live_url: str, account_used: str, final_c
         next_row = len(col_values) + 1
         end_row = next_row + len(rows_to_insert) - 1
         
-        sheet.update(values=rows_to_insert, range_name=f"A{next_row}:D{end_row}")
-        
-        print(f"    [+] Logged {len(rows_to_insert)} backlink(s) successfully to Google Sheets!")
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                sheet.update(values=rows_to_insert, range_name=f"A{next_row}:D{end_row}")
+                print(f"    [+] Logged {len(rows_to_insert)} backlink(s) successfully to Google Sheets!")
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    print(f"    [~] Google Sheets connection error. Retrying ({attempt+1}/{max_retries})...")
+                    import time
+                    time.sleep(2)
+                else:
+                    print(f"    [-] Failed to log to Google Sheets after {max_retries} attempts: {e}")
         
     except Exception as e:
-        print(f"    [-] Failed to log to Google Sheets: {e}")
+        print(f"    [-] Google Sheets setup error: {e}")
 
 
 def main():
