@@ -368,7 +368,14 @@ def approve_discovered_platform(action: DiscoveredPlatformAction):
             
         conn.commit()
         conn.close()
-        return {"status": "success"}
+        
+        # Launch the Auth Browser UI so the Lead can log in manually!
+        import subprocess
+        import sys
+        script_path = os.path.join(os.path.dirname(__file__), "..", "scripts", "auth_browser_ui.py")
+        subprocess.Popen([sys.executable, script_path, domain])
+        
+        return {"status": "success", "message": "Browser launched on your computer! Please log in and close it."}
     except Exception as e:
         print(f"DB Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

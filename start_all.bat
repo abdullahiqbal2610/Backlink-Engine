@@ -25,6 +25,8 @@ start "Intern Panel" cmd /k "cd C:\Users\abdul\OneDrive\Desktop\myStuff\gaper\ba
 
 echo =======================================
 echo All services started!
-echo You can access the dashboard at: http://localhost:8000
+echo You can access the Dashboard at: http://localhost:8000
+echo - Check the "Discovered Sites" tab to approve new platforms.
+echo - Approving a site will instantly launch a browser for you to log in!
 echo =======================================
 pause

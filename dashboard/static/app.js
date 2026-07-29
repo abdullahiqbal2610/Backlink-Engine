@@ -461,6 +461,10 @@ async function handleDiscoveredAction(siteId, action) {
         });
         
         if (response.ok) {
+            const data = await response.json();
+            if (data.message) {
+                alert(data.message);
+            }
             fetchDiscoveredSites();
         } else {
             alert('Action failed. Please try again.');
