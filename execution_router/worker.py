@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 from execution_router.posters import POSTER_REGISTRY  # auto-populated from all platform modules
-from execution_router.posters.generic_agent import GenericAgentPoster
+from execution_router.posters.browser_use_agent import BrowserUseAgentPoster
 
 redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 r = redis.from_url(redis_url)
@@ -168,8 +168,8 @@ def main():
 
             poster = POSTER_REGISTRY.get(platform)
             if not poster:
-                print(f"[!] No explicit poster for '{platform}'. Falling back to Generic Agent (Computer Use).")
-                poster = GenericAgentPoster()
+                print(f"[!] No explicit poster for '{platform}'. Falling back to Autonomous Browser-Use Agent.")
+                poster = BrowserUseAgentPoster()
 
             result = poster.post(url, final_comment)
             
