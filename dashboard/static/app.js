@@ -422,7 +422,10 @@ async function fetchDiscoveredSites() {
             
             card.innerHTML = `
                 <div class="card-header">
-                    <span class="platform-badge">${site.domain}</span>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <span class="platform-badge">${site.domain}</span>
+                        <span style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); color: #10b981; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">Score: ${site.relevance_score || 'N/A'}/10</span>
+                    </div>
                     <a href="${site.sample_url}" target="_blank" class="thread-link">Sample URL ↗</a>
                 </div>
                 <div style="padding: 1rem 0;">

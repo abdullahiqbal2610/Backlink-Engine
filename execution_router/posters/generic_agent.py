@@ -23,8 +23,23 @@ class GenericAgentPoster:
         print(f"[*] Starting Generic Computer Use Agent for {url}")
         try:
             with sync_playwright() as p:
+                from urllib.parse import urlparse
+                domain = urlparse(url).netloc
+                state_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "browser_profiles", f"{domain}_state.json")
+                
                 browser = p.chromium.launch(headless=True)
-                context = browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                
+                if os.path.exists(state_file):
+                    print(f"[*] Found authenticated session state for {domain}")
+                    context = browser.new_context(
+                        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                        storage_state=state_file
+                    )
+                    account_used = f"Authenticated ({domain}_state.json)"
+                else:
+                    context = browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                    account_used = "Guest (Generic Agent)"
+                    
                 page = context.new_page()
                 page.goto(url, timeout=30000, wait_until="domcontentloaded")
                 time.sleep(3) # wait for dynamic forms to render
@@ -116,7 +131,7 @@ class GenericAgentPoster:
                 live_url = page.url
                 browser.close()
                 print(f"[+] Generic Agent successfully submitted to {live_url}")
-                return True, live_url, "Guest (Generic Agent)"
+                return True, live_url, account_used
                 
         except Exception as e:
             print(f"[-] Generic Agent Error: {e}")

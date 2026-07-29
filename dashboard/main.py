@@ -282,7 +282,7 @@ def get_discovered_platforms():
         conn = get_db_connection()
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT id, domain, sample_url, ai_summary, guidelines, discovered_at 
+                SELECT id, domain, sample_url, ai_summary, guidelines, discovered_at, relevance_score 
                 FROM discovered_platforms 
                 WHERE status = 'pending'
                 ORDER BY discovered_at DESC
@@ -295,7 +295,8 @@ def get_discovered_platforms():
                     "sample_url": row[2],
                     "ai_summary": row[3],
                     "guidelines": row[4],
-                    "discovered_at": row[5].isoformat() if row[5] else None
+                    "discovered_at": row[5].isoformat() if row[5] else None,
+                    "relevance_score": row[6]
                 })
         conn.close()
     except Exception as e:

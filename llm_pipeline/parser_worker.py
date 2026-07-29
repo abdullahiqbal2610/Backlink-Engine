@@ -70,33 +70,56 @@ class ParserWorker:
         
         ai_summary = "This site appears to be a blog or forum."
         guidelines = ""
+        relevance_score = 0
+        is_posting_difficult = False
         
         if self.client and scraped_text:
             prompt = (
                 f"Analyze the following text extracted from {url}.\n"
-                f"1. Summarize what this website is about and whether they accept guest posts, articles, or comments.\n"
-                f"2. Extract any specific community guidelines or rules for posting.\n"
-                f"Keep it concise.\n\nText:\n{scraped_text}"
+                f"1. Summarize what this website is about and whether they accept guest posts, articles, or comments (ai_summary).\n"
+                f"2. Extract any specific community guidelines or rules for posting (guidelines).\n"
+                f"3. Score how relevant this site is to a B2B startup selling remote software engineering, AI developers, and tech talent (relevance_score from 1 to 10).\n"
+                f"4. Determine if posting on this site is 'difficult' (is_posting_difficult = true if it requires complex ID verification, paid memberships, or lacks any obvious guest-posting/commenting forms).\n"
+                f"Return ONLY a valid JSON object with the keys: 'ai_summary', 'guidelines', 'relevance_score' (int), and 'is_posting_difficult' (bool).\n\nText:\n{scraped_text}"
             )
             try:
+                from google.genai import types
                 response = self.client.models.generate_content(
                     model="gemini-flash-latest",
-                    contents=prompt
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                    )
                 )
-                ai_summary = response.text.strip()
+                data = json.loads(response.text.strip())
+                ai_summary = data.get("ai_summary", "")
+                guidelines = data.get("guidelines", "")
+                relevance_score = data.get("relevance_score", 0)
+                is_posting_difficult = data.get("is_posting_difficult", False)
+                
             except Exception as e:
                 print(f"[-] Error calling LLM in ParserWorker: {e}")
+                
+        if is_posting_difficult:
+            print(f"[-] Dropping {domain}: LLM determined posting is too difficult or restricted.")
+            conn.close()
+            return
+            
+        if relevance_score < 6:
+            print(f"[-] Dropping {domain}: Relevance score too low ({relevance_score}/10).")
+            conn.close()
+            return
                 
         # Insert into DB
         try:
             with conn.cursor() as cur:
                 cur.execute("""
-                    INSERT INTO discovered_platforms (domain, sample_url, ai_summary, guidelines, status)
-                    VALUES (%s, %s, %s, %s, 'pending')
+                    INSERT INTO discovered_platforms (domain, sample_url, ai_summary, guidelines, status, relevance_score)
+                    VALUES (%s, %s, %s, %s, 'pending', %s)
                     ON CONFLICT (domain) DO NOTHING
-                """, (domain, url, ai_summary, guidelines))
+                """, (domain, url, ai_summary, guidelines, relevance_score))
             conn.commit()
-            print(f"[+] Successfully added {domain} to discovered platforms.")
+            print(f"[+] Successfully added {domain} (Score: {relevance_score}/10) to discovered platforms.")
         except Exception as e:
             conn.rollback()
             print(f"[-] DB Error inserting {domain}: {e}")
