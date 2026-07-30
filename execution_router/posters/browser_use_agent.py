@@ -51,12 +51,44 @@ class BrowserUseAgentPoster:
             return False, None, None
             
     async def _run_agent(self, profile: BrowserProfile, llm, url: str, final_comment: str):
+        from browser_use import Controller
+        import browser_use.browser.context as browser_context
+        
+        controller = Controller()
+        safe_comment = final_comment.replace('`', '\\`').replace('$', '\\$')
+        
+        @controller.action('Instantly paste the FULL guest post article into the currently focused input/textarea. You MUST click/focus the input box first before using this tool!')
+        async def paste_article(browser: browser_context.BrowserContext):
+            page = await browser.get_current_page()
+            script = f"""
+            () => {{
+                const el = document.activeElement;
+                if (!el || (el.tagName !== 'TEXTAREA' && el.tagName !== 'INPUT' && !el.isContentEditable)) {{
+                    return "Error: No text input field is currently focused. Please click the input field first.";
+                }}
+                if (el.isContentEditable) {{
+                    el.innerText = `{safe_comment}`;
+                }} else {{
+                    el.value = `{safe_comment}`;
+                }}
+                el.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                el.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                return "Success: Article pasted into focused element.";
+            }}
+            """
+            result = await page.evaluate(script)
+            return result
+            
         task_prompt = (
             f"You are an automated SDR agent trying to submit a highly valuable guest post/comment. "
             f"1. Navigate to: {url} \n"
             f"2. Locate the main post submission form, comment box, or 'New Article' button.\n"
-            f"3. Fill in the following content. If it requires a title, extract a logical title from the content.\n"
-            f"Content to post:\n{final_comment}\n\n"
+            f"3. Fill in the required details. If it requires a title, extract a logical title from the content.\n\n"
+            f"CRITICAL INSTRUCTION FOR ARTICLE BODY:\n"
+            f"DO NOT use the normal 'input_text' tool to type the main article body! The article is too long and will cause a timeout or ModelOutputTruncatedError.\n"
+            f"INSTEAD, you must:\n"
+            f"   a) Click on the textarea/input box for the article body to focus it.\n"
+            f"   b) Call the custom tool 'paste_article' which will instantly inject the massive article text for you.\n\n"
             f"If it asks for Guest Info: Name is {self.guest_name}, Email is {self.guest_email}.\n"
             f"4. Click submit or publish.\n"
             f"5. If you cannot find a place to post, or if the site demands a complex ID verification paywall, stop and fail gracefully."
@@ -65,7 +97,8 @@ class BrowserUseAgentPoster:
         agent = Agent(
             task=task_prompt,
             llm=llm,
-            browser_profile=profile
+            browser_profile=profile,
+            controller=controller
         )
         result = await agent.run()
         return result
