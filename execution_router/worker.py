@@ -80,12 +80,13 @@ def log_to_google_sheet(platform: str, live_url: str, account_used: str, final_c
         unique_links = list(set(gaper_links))
         
         if not unique_links:
-            backlinks_str = "https://gaper.io (Mention Only)"
-        else:
-            backlinks_str = ",\n".join(unique_links)
+            unique_links = ["https://gaper.io (Mention Only)"]
             
-        # Log a single row for the article, with all backlinks in the 5th column (E)
-        rows_to_insert = [[timestamp, platform, live_url or "Draft Saved", account_used, backlinks_str]]
+        rows_to_insert = []
+        for _ in unique_links:
+            # We insert a duplicate row for EACH backlink generated in this post
+            # Only using 4 columns as requested by the user
+            rows_to_insert.append([timestamp, platform, live_url or "Draft Saved", account_used])
         
         # To avoid shifting when user adds other tables (like Tally) to the right,
         # explicitly find the next empty row based ONLY on Column A
@@ -96,8 +97,8 @@ def log_to_google_sheet(platform: str, live_url: str, account_used: str, final_c
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                sheet.update(values=rows_to_insert, range_name=f"A{next_row}:E{end_row}")
-                print(f"    [+] Logged post with {len(unique_links)} backlink(s) successfully to Google Sheets!")
+                sheet.update(values=rows_to_insert, range_name=f"A{next_row}:D{end_row}")
+                print(f"    [+] Logged {len(rows_to_insert)} row(s) successfully to Google Sheets!")
                 break
             except Exception as e:
                 if attempt < max_retries - 1:
