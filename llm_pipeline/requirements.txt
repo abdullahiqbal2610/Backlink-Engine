@@ -7,3 +7,4 @@ chromadb==0.4.24
 langchain==0.1.13
 langchain-openai==0.0.8
 google-genai==0.3.0
+groq==0.4.2

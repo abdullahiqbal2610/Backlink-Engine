@@ -16,12 +16,13 @@ class ParserWorker:
         redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
         self.redis_client = redis.from_url(redis_url)
         
-        self.api_key = os.getenv("GEMINI_API_KEY")
+        self.api_key = os.getenv("GROQ_API_KEY")
         if self.api_key and "your_" not in self.api_key:
-            self.client = genai.Client(api_key=self.api_key)
+            from groq import Groq
+            self.client = Groq(api_key=self.api_key)
         else:
             self.client = None
-            print("[!] GEMINI_API_KEY not configured. LLM Parser will be mocked.")
+            print("[!] GROQ_API_KEY not configured. LLM Parser will be mocked.")
             
     def get_db_connection(self):
         return psycopg2.connect(
@@ -83,15 +84,23 @@ class ParserWorker:
                 f"Return ONLY a valid JSON object with the keys: 'ai_summary', 'guidelines', 'relevance_score' (int), and 'is_posting_difficult' (bool).\n\nText:\n{scraped_text}"
             )
             try:
-                from google.genai import types
-                response = self.client.models.generate_content(
-                    model="gemini-flash-latest",
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                    )
+                chat_completion = self.client.chat.completions.create(
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "You are a precise data extraction assistant. Always return valid JSON."
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt,
+                        }
+                    ],
+                    model="llama-3.3-70b-versatile",
+                    response_format={"type": "json_object"},
+                    temperature=0,
                 )
-                data = json.loads(response.text.strip())
+                response_text = chat_completion.choices[0].message.content
+                data = json.loads(response_text.strip())
                 ai_summary = data.get("ai_summary", "")
                 guidelines = data.get("guidelines", "")
                 relevance_score = data.get("relevance_score", 0)
