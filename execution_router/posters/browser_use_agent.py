@@ -35,7 +35,17 @@ class BrowserUseAgentPoster:
         try:
             result = asyncio.run(self._run_agent(profile, llm, url, final_comment))
             print(f"[+] Browser-Use Agent execution completed.")
-            return True, url, account_used
+            
+            # Check if the agent actually succeeded
+            is_success = result.is_successful()
+            
+            if is_success:
+                print(f"    [+] Agent reported SUCCESS.")
+                return True, url, account_used
+            else:
+                print(f"    [-] Agent reported FAILURE or gracefully stopped.")
+                return False, None, None
+                
         except Exception as e:
             print(f"[-] Browser-Use Agent Error: {e}")
             return False, None, None
