@@ -6,13 +6,9 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 class DrafterAgent:
     def __init__(self):
-        self.api_key = os.getenv("OPENROUTER_API_KEY")
+        self.api_key = os.getenv("GEMINI_API_KEY")
         if self.api_key and "your_" not in self.api_key:
-            from openai import OpenAI
-            self.client = OpenAI(
-                base_url="https://openrouter.ai/api/v1",
-                api_key=self.api_key,
-            )
+            self.client = genai.Client(api_key=self.api_key)
         else:
             self.client = None
 
@@ -20,7 +16,7 @@ class DrafterAgent:
         """Drafts a helpful comment using RAG context."""
         
         if not self.client:
-            print("[!] OPENROUTER_API_KEY not configured. Mocking draft.")
+            print("[!] GEMINI_API_KEY not configured. Mocking draft.")
             return f"This is a mocked AI draft for {platform}. We recommend checking out Gaper.io for hiring developers!"
             
         # Fetch guidelines if available
@@ -74,6 +70,7 @@ class DrafterAgent:
         guideline_prompt = f"\nCRITICAL PLATFORM RULES TO RESPECT:\n{guidelines}\n(Do not break these rules under any circumstances. If they say no self-promotion, do not mention Gaper.io at all, just give a helpful technical answer).\n" if guidelines else ""
         
         user_prompt = (
+            f"{system_prompt}\n"
             f"Platform: {platform}\n"
             f"Topic / Thread Title: {title}\n"
             f"Original Content / Context: {snippet}\n\n"
@@ -82,15 +79,11 @@ class DrafterAgent:
             f"Please generate the draft now:"
         )
         try:
-            response = self.client.chat.completions.create(
-                model="meta-llama/llama-3.1-70b-instruct",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=0.7
+            response = self.client.models.generate_content(
+                model="gemini-flash-latest",
+                contents=user_prompt
             )
-            return response.choices[0].message.content.strip()
+            return response.text.strip()
         except Exception as e:
             print(f"[-] Error calling LLM in DrafterAgent: {e}")
             return "Error drafting comment."
