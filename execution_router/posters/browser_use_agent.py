@@ -41,7 +41,8 @@ class BrowserUseAgentPoster:
             
             if is_success:
                 print(f"    [+] Agent reported SUCCESS.")
-                return True, url, account_used
+                final_url = result.urls()[-1] if hasattr(result, "urls") and result.urls() else url
+                return True, final_url, account_used
             else:
                 print(f"    [-] Agent reported FAILURE or gracefully stopped.")
                 return False, None, None
