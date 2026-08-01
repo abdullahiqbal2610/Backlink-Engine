@@ -52,13 +52,13 @@ class BrowserUseAgentPoster:
             
     async def _run_agent(self, profile: BrowserProfile, llm, url: str, final_comment: str):
         from browser_use import Controller
-        import browser_use.browser.context as browser_context
+        import browser_use.browser.session as browser_session
         
         controller = Controller()
         safe_comment = final_comment.replace('`', '\\`').replace('$', '\\$')
         
         @controller.action('Instantly paste the FULL guest post article into the currently focused input/textarea. You MUST click/focus the input box first before using this tool!')
-        async def paste_article(browser: browser_context.BrowserContext):
+        async def paste_article(browser: browser_session.BrowserSession):
             page = await browser.get_current_page()
             script = f"""
             () => {{

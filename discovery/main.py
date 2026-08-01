@@ -98,6 +98,33 @@ def run_discovery():
         for item in items:
             pipeline.process_item(item, platform=target["platform"], scrape_type=target["scrape_type"])
 
+    # ── 3. Permanent Direct-Post Targets (Pastebins, Blogs, Auto-learned) ──
+    try:
+        import psycopg2
+        conn = psycopg2.connect(
+            dbname=os.getenv("POSTGRES_DB", "backlink_engine"),
+            user=os.getenv("POSTGRES_USER", "postgres"),
+            password=os.getenv("POSTGRES_PASSWORD", "postgres"),
+            host=os.getenv("POSTGRES_HOST", "localhost"),
+            port=os.getenv("POSTGRES_PORT", "5432")
+        )
+        with conn.cursor() as cur:
+            cur.execute("SELECT domain, original_url, platform_name FROM permanent_targets")
+            targets = cur.fetchall()
+            print(f"[*] Found {len(targets)} permanent auto-post targets in DB.")
+            for domain, original_url, platform_name in targets:
+                # Direct post bypassing SERP
+                item = {
+                    "title": f"Guest Post on {domain}",
+                    "url": original_url,
+                    "snippet": f"Direct auto-post targeted at {domain}.",
+                    "author": "Gaper Team"
+                }
+                pipeline.process_item(item, platform=platform_name, scrape_type=4)
+        conn.close()
+    except Exception as e:
+        print(f"[-] DB Error fetching permanent targets: {e}")
+
     pipeline.close()
     print("=== Discovery Engine Run Complete ===")
 

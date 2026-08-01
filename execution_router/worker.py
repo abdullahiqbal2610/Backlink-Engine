@@ -214,6 +214,18 @@ def main():
                                 INSERT INTO post_results (thread_id, post_status, post_url, posted_at)
                                 VALUES (%s, 'success', %s, CURRENT_TIMESTAMP)
                             """, (thread_id, live_url))
+                            
+                            # Check if we should make it a permanent target
+                            if platform not in ["devto_article", "github_gist", "medium", "hashnode"]:
+                                from urllib.parse import urlparse
+                                domain = urlparse(url).netloc
+                                if domain:
+                                    cur.execute("""
+                                        INSERT INTO permanent_targets (domain, original_url, platform_name)
+                                        VALUES (%s, %s, %s)
+                                        ON CONFLICT (domain) DO NOTHING
+                                    """, (domain, url, platform))
+                                    print(f"    [+] Auto-Permanence: Registered {domain} as a permanent target!")
                         conn.commit()
                         conn.close()
                         print(f"    [+] Saved live URL: {live_url}")
