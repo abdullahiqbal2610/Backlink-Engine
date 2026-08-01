@@ -111,15 +111,76 @@ class ParserWorker:
             return
                 
         # Insert into DB
+        # Insert into DB
         try:
+            # Check autonomous mode
+            auto_val = self.redis_client.get("AUTONOMOUS_MODE")
+            if auto_val is None:
+                autonomous_mode = os.getenv("AUTONOMOUS_MODE", "false").lower() == "true"
+            else:
+                autonomous_mode = auto_val.decode('utf-8') == "true"
+
             with conn.cursor() as cur:
-                cur.execute("""
-                    INSERT INTO discovered_platforms (domain, sample_url, ai_summary, guidelines, status, relevance_score)
-                    VALUES (%s, %s, %s, %s, 'pending', %s)
-                    ON CONFLICT (domain) DO NOTHING
-                """, (domain, url, ai_summary, guidelines, relevance_score))
+                if autonomous_mode:
+                    cur.execute("""
+                        INSERT INTO discovered_platforms (domain, sample_url, ai_summary, guidelines, status, relevance_score)
+                        VALUES (%s, %s, %s, %s, 'approved', %s)
+                        ON CONFLICT (domain) DO UPDATE SET status = 'approved' RETURNING id
+                    """, (domain, url, ai_summary, guidelines, relevance_score))
+                    row = cur.fetchone()
+                    platform_id = row[0] if row else None
+                    
+                    platform_name = domain.replace('.', '_')
+                    cur.execute("""
+                        INSERT INTO platforms (name, scrape_type, posting_type) 
+                        VALUES (%s, 'HTML', 'A') 
+                        ON CONFLICT (name) DO NOTHING
+                    """, (platform_name,))
+                    
+                    if guidelines:
+                        cur.execute("""
+                            INSERT INTO platform_guidelines (platform, url, rules_text) 
+                            VALUES (%s, %s, %s)
+                            ON CONFLICT (platform) DO UPDATE SET rules_text = EXCLUDED.rules_text
+                        """, (platform_name, f"https://{domain}", guidelines))
+                        
+                    import uuid
+                    from datetime import datetime, timezone
+                    thread_id = str(uuid.uuid4())
+                    title = "The Future of Remote Engineering Teams and AI"
+                    body_context = f"Site Context: {ai_summary}\n\nPlease write a comprehensive guest post about hiring remote developers, scaling engineering teams, and integrating AI."
+                    
+                    cur.execute(
+                        "INSERT INTO threads (thread_id, platform, url, title, status) VALUES (%s, %s, %s, %s, 'discovered') ON CONFLICT DO NOTHING",
+                        (thread_id, platform_name, url, title)
+                    )
+                    
+                    contract_a = {
+                        "thread_id": thread_id,
+                        "platform": platform_name,
+                        "url": url,
+                        "title": title,
+                        "body": body_context,
+                        "author": "unknown",
+                        "posted_at": datetime.now(timezone.utc).isoformat(),
+                        "scraped_at": datetime.now(timezone.utc).isoformat(),
+                        "scrape_type": 4,
+                        "community_guidelines": guidelines,
+                        "guidelines_version": "1.0"
+                    }
+                    self.redis_client.lpush(f"discovery_queue_{platform_name}", json.dumps(contract_a))
+                    self.redis_client.sadd("active_discovery_queues", f"discovery_queue_{platform_name}")
+                    
+                    print(f"[+] AUTONOMOUS MODE: Auto-approved {domain} and pushed to discovery_queue_{platform_name}")
+                else:
+                    cur.execute("""
+                        INSERT INTO discovered_platforms (domain, sample_url, ai_summary, guidelines, status, relevance_score)
+                        VALUES (%s, %s, %s, %s, 'pending', %s)
+                        ON CONFLICT (domain) DO NOTHING
+                    """, (domain, url, ai_summary, guidelines, relevance_score))
+                    print(f"[+] Successfully added {domain} (Score: {relevance_score}/10) to discovered platforms. Waiting for manual approval.")
+                    
             conn.commit()
-            print(f"[+] Successfully added {domain} (Score: {relevance_score}/10) to discovered platforms.")
         except Exception as e:
             conn.rollback()
             print(f"[-] DB Error inserting {domain}: {e}")

@@ -142,7 +142,7 @@ class LlmWorker:
             else:
                 autonomous_mode = auto_val.decode('utf-8') == "true"
                 
-            is_auto_approved = autonomous_mode and platform in ["devto_article", "github_gist", "medium", "hashnode"]
+            is_auto_approved = autonomous_mode  # Auto approve ALL platforms if autonomous mode is enabled
             
             contract_b = {
                 "thread_id": thread_id,
