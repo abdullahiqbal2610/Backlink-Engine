@@ -58,8 +58,8 @@ class BrowserUseAgentPoster:
         controller = Controller()
         safe_comment = final_comment.replace('`', '\\`').replace('$', '\\$')
         
-        @controller.action('Instantly paste the FULL guest post article into the currently focused input/textarea. You MUST click/focus the input box first before using this tool!')
-        async def paste_article(browser: browser_session.BrowserSession):
+        @controller.action('Instantly paste the FULL guest post article into the currently focused input/textarea. You MUST click/focus the input box first before using this action!')
+        async def paste_article(confirm: bool, browser: browser_session.BrowserSession):
             page = await browser.get_current_page()
             script = f"""
             () => {{
@@ -89,8 +89,8 @@ class BrowserUseAgentPoster:
             f"DO NOT use the normal 'input_text' tool to type the main article body! The article is too long and will cause a timeout or ModelOutputTruncatedError.\n"
             f"INSTEAD, you must:\n"
             f"   a) Click on the textarea/input box for the article body to focus it.\n"
-            f"   b) Call the custom tool 'paste_article' which will instantly inject the massive article text for you.\n"
-            f"   c) DO NOT search for the article in local files, DO NOT try to read it. It is already securely loaded into the 'paste_article' tool! Just call the tool.\n\n"
+            f"   b) Use your 'paste_article' action (with confirm=True).\n"
+            f"   c) DO NOT use the 'evaluate' action to run JS. DO NOT search for the article in local files. The article is already securely loaded into the 'paste_article' action! Just execute the action.\n\n"
             f"If it asks for Guest Info: Name is {self.guest_name}, Email is {self.guest_email}.\n"
             f"4. Click submit or publish.\n"
             f"5. If you cannot find a place to post, or if the site demands a complex ID verification paywall, stop and fail gracefully."
