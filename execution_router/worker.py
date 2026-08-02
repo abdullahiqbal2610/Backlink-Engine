@@ -170,8 +170,9 @@ def main():
 
             poster = POSTER_REGISTRY.get(platform)
             if not poster:
-                print(f"[!] No explicit poster for '{platform}'. Falling back to Autonomous Browser-Use Agent.")
-                poster = BrowserUseAgentPoster()
+                print(f"[!] No explicit poster for '{platform}'. Skipping this platform to prevent pipeline pause.")
+                mark_thread_status(thread_id, "failed")
+                continue
 
             result = poster.post(url, final_comment)
             
