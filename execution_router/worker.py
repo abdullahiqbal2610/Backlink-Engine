@@ -170,9 +170,19 @@ def main():
 
             poster = POSTER_REGISTRY.get(platform)
             if not poster:
-                print(f"[!] No explicit poster for '{platform}'. Skipping this platform to prevent pipeline pause.")
-                mark_thread_status(thread_id, "failed")
-                continue
+                from urllib.parse import urlparse
+                domain = urlparse(url).netloc
+                state_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "browser_profiles", f"{domain}_state.json")
+                
+                if os.path.exists(state_file):
+                    print(f"[!] No explicit poster for '{platform}', BUT found cookies ({domain}_state.json)! Running Browser-Use Agent.")
+                    from execution_router.posters.browser_use_agent import BrowserUseAgentPoster
+                    poster = BrowserUseAgentPoster()
+                else:
+                    print(f"[!] No explicit poster for '{platform}' and NO cookies found. Skipping to prevent pipeline pause.")
+                    print(f"    -> Action required: Create an account on {domain} and save {domain}_state.json in browser_profiles/ to enable auto-posting here!")
+                    mark_thread_status(thread_id, "failed")
+                    continue
 
             result = poster.post(url, final_comment)
             
