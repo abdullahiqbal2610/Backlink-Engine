@@ -81,7 +81,7 @@ class BrowserUseAgentPoster:
             return result
             
         task_prompt = (
-            f"You are an automated SDR agent trying to submit a highly valuable guest post/comment. "
+            f"You are an automated SDR agent trying to submit a highly valuable guest post/comment. You are already logged in to your account!\n"
             f"1. Navigate to: {url} \n"
             f"2. Locate the main post submission form, comment box, or 'New Article' button.\n"
             f"3. Fill in the required details. If it requires a title, extract a logical title from the content.\n\n"

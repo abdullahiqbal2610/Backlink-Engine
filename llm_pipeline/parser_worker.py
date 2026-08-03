@@ -79,7 +79,7 @@ class ParserWorker:
                 f"1. Summarize what this website is about and whether they accept guest posts, articles, or comments (ai_summary).\n"
                 f"2. Extract any specific community guidelines or rules for posting (guidelines).\n"
                 f"3. Score how relevant this site is to a B2B startup selling remote software engineering, AI developers, and tech talent (relevance_score from 1 to 10).\n"
-                f"4. Determine if posting on this site is 'difficult' (is_posting_difficult = true if it requires complex ID verification, paid memberships, lacks any obvious guest-posting/commenting forms, or if it requires you to manually email pitches/articles to an editor instead of a direct submission form).\n"
+                f"4. Determine if posting on this site is 'difficult' (is_posting_difficult = true if it requires complex ID verification, paid memberships, lacks any obvious guest-posting/commenting forms, or if it requires you to manually email pitches/articles to an editor instead of a direct submission form. If it simply requires a standard user account or login, it is NOT difficult).\n"
                 f"Return ONLY a valid JSON object with the keys: 'ai_summary', 'guidelines', 'relevance_score' (int), and 'is_posting_difficult' (bool).\n\nText:\n{scraped_text}"
             )
             try:
