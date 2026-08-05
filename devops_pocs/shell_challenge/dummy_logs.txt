@@ -1,0 +1,6 @@
+INFO: Application started
+ERROR: Connection timeout connecting to database
+INFO: User logged in
+ERROR: Request timeout from API
+WARN: Memory usage high
+ERROR: Session timeout for user 123
