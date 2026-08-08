@@ -45,17 +45,19 @@ class HashnodePoster(PosterBase):
 
         try:
             with sync_playwright() as p:
-                # Use Playwright's Chromium in non-headless mode
+                # headless=True required for Cloud Run (no display server)
                 browser = p.chromium.launch(
-                    headless=False,
+                    headless=True,
                     args=[
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                        "--disable-dev-shm-usage",
                         "--disable-blink-features=AutomationControlled",
-                        "--start-maximized"
                     ]
                 )
                 
                 context = browser.new_context(
-                    no_viewport=True,
+                    viewport={"width": 1280, "height": 800},
                     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36"
                 )
                 

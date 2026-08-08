@@ -1,0 +1,23 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY discovery/requirements.txt ./discovery_reqs.txt
+COPY llm_pipeline/requirements.txt ./llm_reqs.txt
+RUN pip install --no-cache-dir -r discovery_reqs.txt -r llm_reqs.txt
+
+# Copy source code
+COPY . .
+
+# Ensure Python output is unbuffered so we can see logs in Docker immediately
+ENV PYTHONUNBUFFERED=1
+
+# Command is overridden in docker-compose.yml
+CMD ["bash", "infra/run_worker.sh"]

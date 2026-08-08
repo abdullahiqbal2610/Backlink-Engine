@@ -1,0 +1,27 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies for psycopg2-binary
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy and install Python dependencies
+COPY dashboard/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the entire project
+COPY . .
+
+# Ensure Python output is unbuffered
+ENV PYTHONUNBUFFERED=1
+ENV PORT=8080
+
+WORKDIR /app/dashboard
+
+# Expose port (Cloud Run uses PORT env variable, default 8080)
+EXPOSE 8080
+
+# Run Uvicorn - use $PORT env variable set by Cloud Run
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}"]

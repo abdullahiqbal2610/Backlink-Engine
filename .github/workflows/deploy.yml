@@ -1,0 +1,157 @@
+name: Deploy to Google Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+  REPO_NAME: gaper-repo
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+    - name: Set up Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+
+    - name: Authorize Docker for Artifact Registry
+      run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+    # Convert ENV_FILE_CONTENT secret into a proper YAML file for gcloud
+    - name: Build env-vars YAML file
+      run: |
+        echo "${{ secrets.ENV_FILE_CONTENT }}" > raw.env
+        python3 - <<'PYEOF'
+        import re, sys
+
+        lines = open('raw.env').readlines()
+        yaml_lines = []
+        for line in lines:
+            line = line.rstrip('\n').rstrip('\r')
+            # skip blank lines and comments
+            if not line.strip() or line.strip().startswith('#'):
+                continue
+            # split on first = only
+            if '=' not in line:
+                continue
+            key, _, val = line.partition('=')
+            key = key.strip()
+            val = val.strip()
+            # YAML-safe: wrap value in single quotes, escaping any existing single quotes
+            val_escaped = val.replace("'", "''")
+            yaml_lines.append(f"{key}: '{val_escaped}'")
+
+        with open('env_vars.yaml', 'w') as f:
+            f.write('\n'.join(yaml_lines) + '\n')
+
+        print(f"Generated env_vars.yaml with {len(yaml_lines)} variables")
+        PYEOF
+
+    # Write GCP credentials JSON from secret so it's available in the container
+    - name: Write GCP Credentials JSON
+      run: |
+        echo '${{ secrets.GCP_CREDENTIALS }}' > gcp_credentials.json
+        echo "GCP credentials written."
+
+    # Run DB migrations against Neon (only uses psycopg2 which is built-in)
+    - name: Run Database Migrations
+      run: |
+        pip install psycopg2-binary --quiet
+        python3 - <<'PYEOF'
+        import os, psycopg2
+
+        # Parse env from raw.env
+        env = {}
+        for line in open('raw.env'):
+            line = line.strip()
+            if not line or line.startswith('#') or '=' not in line:
+                continue
+            k, _, v = line.partition('=')
+            env[k.strip()] = v.strip()
+
+        conn = psycopg2.connect(
+            host=env['POSTGRES_HOST'],
+            dbname=env['POSTGRES_DB'],
+            user=env['POSTGRES_USER'],
+            password=env['POSTGRES_PASSWORD'],
+            port=env.get('POSTGRES_PORT', '5432'),
+            sslmode='require'
+        )
+        cur = conn.cursor()
+        sql = open('infra/init.sql').read()
+        cur.execute(sql)
+        conn.commit()
+        cur.close()
+        conn.close()
+        print("DB migration done!")
+        PYEOF
+
+    # ── DASHBOARD ────────────────────────────────────────────────────────────
+    - name: Build and Push Dashboard
+      run: |
+        docker build \
+          -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/dashboard:latest \
+          -f infra/Dockerfile.dashboard .
+        docker push \
+          ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/dashboard:latest
+
+    - name: Deploy Dashboard to Cloud Run
+      run: |
+        gcloud run deploy abdul-dashboard \
+          --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/dashboard:latest \
+          --region ${{ env.REGION }} \
+          --platform managed \
+          --allow-unauthenticated \
+          --timeout=300 \
+          --cpu=1 \
+          --memory=512Mi \
+          --env-vars-file env_vars.yaml
+
+    # ── WORKER (LLM + Discovery) ─────────────────────────────────────────────
+    - name: Build and Push Worker
+      run: |
+        docker build \
+          -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/worker:latest \
+          -f infra/Dockerfile.worker .
+        docker push \
+          ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/worker:latest
+
+    - name: Deploy LLM Worker Job
+      run: |
+        gcloud run jobs update abdul-llm-job \
+          --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/worker:latest \
+          --region ${{ env.REGION }} \
+          --env-vars-file env_vars.yaml
+
+    # ── ROUTER (Playwright) ──────────────────────────────────────────────────
+    - name: Build and Push Router
+      run: |
+        docker build \
+          -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/router:latest \
+          -f infra/Dockerfile.playwright .
+        docker push \
+          ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/router:latest
+
+    - name: Deploy Router Job
+      run: |
+        gcloud run jobs update abdul-router-job \
+          --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/router:latest \
+          --region ${{ env.REGION }} \
+          --env-vars-file env_vars.yaml

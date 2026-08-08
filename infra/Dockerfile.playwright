@@ -1,0 +1,26 @@
+# Use the official Playwright Python image (includes all necessary browser dependencies)
+FROM mcr.microsoft.com/playwright/python:v1.44.0-jammy
+
+WORKDIR /app
+
+# Install any additional system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY execution_router/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install stealth plugin specifically
+RUN pip install --no-cache-dir playwright-stealth
+
+# Copy source code
+COPY . .
+
+# Ensure Python output is unbuffered
+ENV PYTHONUNBUFFERED=1
+
+# Run the execution router
+CMD ["python", "execution_router/worker.py"]

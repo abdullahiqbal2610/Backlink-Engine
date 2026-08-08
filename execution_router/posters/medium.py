@@ -18,29 +18,68 @@ class MediumPoster(PosterBase):
     def discover_feeds(cls):
         return []
 
-    def post(self, url: str, content: str) -> tuple[bool, str]:
-        print("[*] Starting Medium automation...")
+    def post(self, url: str, content: str) -> tuple[bool, str, str]:
+        print("[*] Starting Medium automation via Cookie Injection...")
+
+        cookies_path = os.path.join(os.path.dirname(__file__), "..", "..", "browser_profiles", "medium_cookies.json")
+        
+        if not os.path.exists(cookies_path):
+            print(f"[-] medium_cookies.json not found at {cookies_path}")
+            print("[-] Upload cookies via Dashboard first!")
+            return False, None, "N/A"
+        
+        try:
+            import json
+            with open(cookies_path, "r", encoding="utf-8") as f:
+                raw = f.read().strip()
+            saved_cookies = json.loads(raw)
+            if isinstance(saved_cookies, str):
+                saved_cookies = json.loads(saved_cookies)
+        except Exception as e:
+            print(f"[-] Failed to load cookies: {e}")
+            return False, None, "N/A"
 
         try:
             with sync_playwright() as p:
                 launch_options = {
-                    "headless": False,  # Visible browser
+                    "headless": True,  # Must be True for Cloud Run (no display)
                     "args": [
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                        "--disable-dev-shm-usage",
                         "--disable-blink-features=AutomationControlled",
                         "--ignore-certificate-errors"
                     ]
                 }
                 
-                # Use a persistent profile so cookies/sessions are saved forever!
-                profile_dir = os.path.join(os.path.dirname(__file__), "..", "..", "browser_profiles", "medium")
+                print("[*] Launching Browser...")
+                browser = p.chromium.launch(**launch_options)
                 
-                print("[*] Launching Persistent Browser Profile...")
-                context = p.chromium.launch_persistent_context(
-                    user_data_dir=profile_dir,
-                    **launch_options
+                context = browser.new_context(
+                    viewport={"width": 1280, "height": 800},
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36"
                 )
                 
-                page = context.pages[0] if context.pages else context.new_page()
+                # Inject saved cookies BEFORE navigating
+                print("[*] Injecting Medium session cookies...")
+                playwright_cookies = []
+                for c in saved_cookies:
+                    cookie = {
+                        "name": c["name"],
+                        "value": c["value"],
+                        "domain": c["domain"],
+                        "path": c.get("path", "/"),
+                        "secure": c.get("secure", True),
+                        "httpOnly": c.get("httpOnly", False),
+                        "sameSite": c.get("sameSite", "Lax")
+                    }
+                    if "expirationDate" in c:
+                        cookie["expires"] = c["expirationDate"]
+                    playwright_cookies.append(cookie)
+                    
+                context.add_cookies(playwright_cookies)
+                
+                page = context.new_page()
                 
                 print("[*] Navigating to Medium's New Story page...")
                 page.goto("https://medium.com/new-story", wait_until="domcontentloaded", timeout=60000)
