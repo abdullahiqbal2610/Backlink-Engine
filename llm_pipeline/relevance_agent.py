@@ -13,17 +13,20 @@ class RelevanceAgent:
             self.client = None
 
     def is_relevant(self, title: str, snippet: str, platform: str) -> bool:
-        """Decides if the thread is relevant to Gaper.io's backlink strategy."""
+        """Decides if the thread is relevant to the company's backlink strategy."""
         
         if not self.client:
             print("[!] GEMINI_API_KEY not configured. Mocking relevance: True")
             return True
             
+        company_name = os.getenv("COMPANY_NAME", "our company")
+        company_desc = os.getenv("COMPANY_DESCRIPTION", "We provide technical solutions.")
+        
         system_prompt = (
             "You are an AI assistant filtering forum threads for backlink opportunities. "
-            "Your company is Gaper.io, which provides top-tier remote engineering talent to startups. "
-            "Given the title and snippet of a post, reply ONLY with 'YES' if it's relevant to software engineering, "
-            "hiring developers, startups, or SaaS, or 'NO' if it is completely unrelated."
+            f"Your company is {company_name}, which does the following: {company_desc}. "
+            "Given the title and snippet of a post, reply ONLY with 'YES' if it's relevant to the company's niche or services, "
+            "or 'NO' if it is completely unrelated."
         )
         
         user_prompt = f"{system_prompt}\n\nPlatform: {platform}\nTitle: {title}\nSnippet: {snippet}"

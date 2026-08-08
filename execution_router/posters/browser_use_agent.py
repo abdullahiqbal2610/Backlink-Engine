@@ -10,7 +10,7 @@ class BrowserUseAgentPoster:
         # Identity to use for guest posts
         self.guest_name = os.getenv("GUEST_NAME", "Abdullah Iqbal")
         self.guest_email = os.getenv("GUEST_EMAIL", "abdullahiqbal2610@gmail.com")
-        self.guest_website = os.getenv("GUEST_WEBSITE", "https://gaper.io")
+        self.guest_website = os.getenv("GUEST_WEBSITE", "https://example.com")
         
     def post(self, url: str, final_comment: str):
         if not self.api_key:

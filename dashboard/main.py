@@ -13,7 +13,7 @@ from dotenv import load_dotenv, set_key
 dotenv_path = os.path.join(os.path.dirname(__file__), '..', '.env')
 load_dotenv(dotenv_path=dotenv_path)
 
-app = FastAPI(title="Gaper Intern Panel Review")
+app = FastAPI(title="AI Backlink Engine Review Panel")
 
 # Add CORS middleware
 app.add_middleware(

@@ -45,14 +45,14 @@ class GithubGistPoster(PosterBase):
         
         # We assume the content from the LLM contains a Markdown title on the first line
         lines = content.strip().split("\n")
-        title = "Gaper Snippet"
+        title = "The Company Snippet"
         if lines and lines[0].startswith("# "):
             title = lines[0].replace("# ", "").strip()
             content = "\n".join(lines[1:]).strip()
             
         # Create a safe filename from the title
         safe_title = "".join(c if c.isalnum() else "_" for c in title.lower())
-        filename = f"{safe_title[:30]}_gaper.md"
+        filename = f"{safe_title[:30]}_snippet.md"
         if not filename.endswith(".md"):
             filename += ".md"
             

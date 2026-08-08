@@ -1,4 +1,4 @@
-# 🚀 Gaper Backlink AI Engine
+# 🚀 AI Backlink Engine
 
 A fully autonomous, AI-driven engine for generating high-quality backlinks and establishing thought leadership across multiple developer platforms.
 
@@ -16,7 +16,7 @@ A fully autonomous, AI-driven engine for generating high-quality backlinks and e
 - **Admin Dashboard**: Fast API/Next.js-based dashboard to manually review and approve drafts, view historical posts, monitor system health, and track real-time analytics with Chart.js.
 - **Autonomous Mode**: A single flip-switch in the dashboard UI (or `.env`) to go full autopilot.
 - **Google Sheets Integration**: Automatically logs every successfully published backlink in real-time, extracting the exact live URL and the account used to post it.
-- **Smart Contextual Backlinks**: Dynamically embeds diverse `gaper.io` URLs (`/blogs`, `/ai-agent-development-company`, etc.) organically within plain-text technical content to bypass spam filters and maximize SEO footprint.
+- **Smart Contextual Backlinks**: Dynamically embeds diverse target URLs (configured via `.env`) organically within plain-text technical content to bypass spam filters and maximize SEO footprint.
 
 ## 🛠️ Architecture
 
@@ -38,11 +38,17 @@ A fully autonomous, AI-driven engine for generating high-quality backlinks and e
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/abdullahiqbal2610/Gaper-Backlink-Engine.git
-   cd Gaper-Backlink-Engine
+   git clone https://github.com/yourusername/AI-Backlink-Engine.git
+   cd AI-Backlink-Engine
    ```
 
 2. **Set up the environment:**
+   This engine is fully configurable via environment variables. Open `.env.example` and set your specific company details:
+   - `COMPANY_NAME`
+   - `COMPANY_WEBSITE_URL`
+   - `COMPANY_DESCRIPTION`
+   - `COMPANY_TARGET_URLS`
+   
    The codebase uses an automated environment switching system across branches:
    - Create a `.env.local` file for your local database/redis connections (used on `main` branch).
    - Create a `.env.cloud` file for your cloud/Neon/Upstash connections (used on `branch1` deployed version).

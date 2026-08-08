@@ -1,9 +1,16 @@
+import os
 import requests
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
 
-def scrape_gaper_io():
-    print("[*] Scraping gaper.io for RAG context...")
-    url = "https://gaper.io"
+load_dotenv()
+
+def scrape_company_website():
+    url = os.getenv("COMPANY_WEBSITE_URL")
+    if not url:
+        print("[-] COMPANY_WEBSITE_URL not found in env. Skipping scrape.")
+        return []
+    print(f"[*] Scraping {url} for RAG context...")
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     
     try:
@@ -36,14 +43,14 @@ def scrape_gaper_io():
         if current_chunk:
             chunks.append(" ".join(current_chunk))
             
-        print(f"[+] Scraped {len(chunks)} chunks from gaper.io")
+        print(f"[+] Scraped {len(chunks)} chunks from {url}")
         return chunks
         
     except Exception as e:
-        print(f"[-] Failed to scrape gaper.io: {e}")
+        print(f"[-] Failed to scrape {url}: {e}")
         return []
 
 if __name__ == "__main__":
-    chunks = scrape_gaper_io()
+    chunks = scrape_company_website()
     for i, c in enumerate(chunks[:2]):
         print(f"Chunk {i+1}:\n{c}\n")

@@ -5,7 +5,7 @@ GitHub Discussions uses GitHub's GraphQL API v4.
 We post comments to open discussions on relevant repos.
 No Playwright needed — pure API calls.
 
-Target repos for Gaper: repos related to hiring, remote-work tools,
+Target repos for The Company: repos related to hiring, remote-work tools,
 dev team management, etc.
 
 Setup: Create a GitHub PAT (Personal Access Token) with 'repo' or 'public_repo' scope.

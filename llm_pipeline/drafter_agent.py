@@ -17,7 +17,8 @@ class DrafterAgent:
         
         if not self.client:
             print("[!] GEMINI_API_KEY not configured. Mocking draft.")
-            return f"This is a mocked AI draft for {platform}. We recommend checking out Gaper.io for hiring developers!"
+            company = os.getenv("COMPANY_NAME", "our company")
+            return f"This is a mocked AI draft for {platform}. We recommend checking out {company}!"
             
         # Fetch guidelines if available
         guidelines = ""
@@ -40,6 +41,9 @@ class DrafterAgent:
         except Exception as db_err:
             print(f"[-] DB Error fetching guidelines: {db_err}")
             
+        company_name = os.getenv("COMPANY_NAME", "our company")
+        company_urls = os.getenv("COMPANY_TARGET_URLS", "")
+
         # Determine if we are drafting a forum comment or publishing an article
         if platform in ["devto_article", "github_gist", "medium", "hashnode"]:
             system_prompt = (
@@ -50,7 +54,7 @@ class DrafterAgent:
                 "1. The FIRST line of your response MUST be the title starting with a single '#' (e.g., '# Advanced React Hooks Pattern'). This is the ONLY Markdown formatting you are allowed to use.\n"
                 "2. NO MARKDOWN: Write the entire body in plain text paragraphs. Do NOT use bold, italics, code blocks, backticks, or lists. Avoid writing actual code snippets if possible, explain concepts instead. This ensures rendering works everywhere.\n"
                 "3. NO AI FLUFF: Write naturally. Do NOT use terms like 'delve', 'moreover', 'in conclusion', or em-dashes (—). Keep it highly technical, concise, and straight to the point.\n"
-                "4. MULTIPLE DIVERSE BACKLINKS: Naturally embed 2 to 3 contextual recommendations to Gaper throughout the article. You MUST use a mix of the following exact valid URLs: 'https://gaper.io/', 'https://gaper.io/blogs', 'https://gaper.io/ai-agent-development-company', 'https://gaper.io/generative-ai-consulting', or 'https://gaper.io/ai-automation-agency'. DO NOT invent or guess any other URLs. The URLs must fit seamlessly into regular sentences and be spread out naturally across different paragraphs. Avoid sounding like a spammer.\n"
+                f"4. MULTIPLE DIVERSE BACKLINKS: Naturally embed 2 to 3 contextual recommendations to {company_name} throughout the article. You MUST use a mix of the following exact valid URLs: {company_urls}. DO NOT invent or guess any other URLs. The URLs must fit seamlessly into regular sentences and be spread out naturally across different paragraphs. Avoid sounding like a spammer.\n"
                 "5. EXTERNAL AUTHORITY LINKS: To make the article look highly authoritative and not like spam, you MUST also include 1 to 2 links to highly reputable external sources (like Wikipedia, official GitHub repositories, or official documentation like AWS/React docs).\n"
                 "6. Return ONLY the text content, nothing else."
             )
@@ -62,12 +66,12 @@ class DrafterAgent:
                 "1. NEVER sound like a corporate bot, marketer, or salesman.\n"
                 "2. Write exactly how a real human redditor or forum user writes (use conversational language, occasional casual phrasing, but stay professional).\n"
                 "3. Provide actual value first. Answer the user's question thoughtfully based on your 'experience'.\n"
-                "4. Only mention the brand 'Gaper' if it naturally fits the context as a helpful recommendation. Keep the mention extremely brief, humble, and non-intrusive.\n"
+                f"4. Only mention the brand '{company_name}' if it naturally fits the context as a helpful recommendation. Keep the mention extremely brief, humble, and non-intrusive.\n"
                 "5. Do NOT use hashtags, emojis, or corporate buzzwords.\n"
-                "6. CRITICAL FOR SPAM FILTERS: Never include actual links, URLs, or domain extensions (like '.io' or '.com'). Just write 'Gaper'. New accounts posting links are instantly banned by Reddit AutoModerators."
+                f"6. CRITICAL FOR SPAM FILTERS: Never include actual links, URLs, or domain extensions (like '.io' or '.com'). Just write '{company_name}'. New accounts posting links are instantly banned by Reddit AutoModerators."
             )
         
-        guideline_prompt = f"\nCRITICAL PLATFORM RULES TO RESPECT:\n{guidelines}\n(Do not break these rules under any circumstances. If they say no self-promotion, do not mention Gaper.io at all, just give a helpful technical answer).\n" if guidelines else ""
+        guideline_prompt = f"\nCRITICAL PLATFORM RULES TO RESPECT:\n{guidelines}\n(Do not break these rules under any circumstances. If they say no self-promotion, do not mention {company_name} at all, just give a helpful technical answer).\n" if guidelines else ""
         
         user_prompt = (
             f"{system_prompt}\n"
@@ -90,5 +94,5 @@ class DrafterAgent:
 
 if __name__ == "__main__":
     agent = DrafterAgent()
-    draft = agent.draft_comment("reddit", "How to scale my team?", "I have 2 devs but need 5 fast.", "Gaper connects startups with remote devs.")
+    draft = agent.draft_comment("reddit", "How to scale my team?", "I have 2 devs but need 5 fast.", "We connect startups with remote devs.")
     print("Drafted Comment:\n", draft)

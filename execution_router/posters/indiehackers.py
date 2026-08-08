@@ -3,7 +3,7 @@ Indie Hackers Poster — Type B (Playwright + Auth)
 
 Indie Hackers uses standard form login (email + password).
 Comments are posted to product/group discussions.
-Perfect Gaper audience: indie founders actively looking for dev talent & tools.
+Perfect The Company audience: indie founders actively looking for dev talent & tools.
 
 No public API exists, so we use Playwright for both discovery and posting.
 """

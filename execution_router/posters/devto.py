@@ -6,7 +6,7 @@ We use Playwright for posting comments (persistent session login).
 The API key is still used for discovery (reading articles/feeds).
 
 dev.to has no AutoModerator, no karma gates, and is much more permissive
-than Reddit. Links to Gaper are totally fine in context.
+than Reddit. Links to The Company are totally fine in context.
 """
 
 import os

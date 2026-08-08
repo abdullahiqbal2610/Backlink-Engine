@@ -5,7 +5,7 @@ HN uses a simple form-based login with a session cookie. Once logged in,
 we navigate to the item page and submit the comment form directly.
 
 No AutoModerator, no karma gates on comments. Links are allowed in HN comments.
-Audience: senior engineers, founders, investors — perfect for Gaper.
+Audience: senior engineers, founders, investors — perfect for The Company.
 """
 
 import os
