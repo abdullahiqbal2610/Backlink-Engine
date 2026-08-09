@@ -118,7 +118,7 @@ def run_discovery():
                     "title": f"Guest Post on {domain}",
                     "url": original_url,
                     "snippet": f"Direct auto-post targeted at {domain}.",
-                    "author": "Gaper Team"
+                    "author": "System Auto-Discovery"
                 }
                 pipeline.process_item(item, platform=platform_name, scrape_type=4)
         conn.close()

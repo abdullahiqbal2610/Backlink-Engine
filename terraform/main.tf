@@ -7,7 +7,7 @@ provider "google" {
 
 # 5. Dashboard (Cloud Run Service)
 resource "google_cloud_run_v2_service" "dashboard" {
-  name     = "abdul-dashboard"
+  name     = "backlink-dashboard"
   location = var.region
   ingress  = "INGRESS_TRAFFIC_ALL"
   deletion_protection = false
@@ -36,7 +36,7 @@ resource "google_cloud_run_service_iam_member" "public_access" {
 
 # 6. Workers (Cloud Run Jobs)
 resource "google_cloud_run_v2_job" "execution_router" {
-  name     = "abdul-router-job"
+  name     = "backlink-router-job"
   location = var.region
   deletion_protection = false
 
@@ -62,7 +62,7 @@ resource "google_cloud_run_v2_job" "execution_router" {
 }
 
 resource "google_cloud_run_v2_job" "llm_worker" {
-  name     = "abdul-llm-job"
+  name     = "backlink-llm-job"
   location = var.region
   deletion_protection = false
 

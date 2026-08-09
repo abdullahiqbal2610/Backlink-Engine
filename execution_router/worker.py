@@ -75,12 +75,13 @@ def log_to_google_sheet(platform: str, live_url: str, account_used: str, final_c
         
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        # Extract all unique Gaper URLs from the comment
-        gaper_links = re.findall(r'(https://gaper\.io[^\s\)\'\"\]]*)', final_comment)
-        unique_links = list(set(gaper_links))
+        # Extract all unique target URLs from the comment
+        company_domain = os.getenv("COMPANY_WEBSITE_URL", "example.com").replace("https://", "").replace("http://", "").strip("/")
+        company_links = re.findall(rf'(https?://(?:www\.)?{re.escape(company_domain)}[^\s\)\'\"\]]*)', final_comment)
+        unique_links = list(set(company_links))
         
         if not unique_links:
-            unique_links = ["https://gaper.io (Mention Only)"]
+            unique_links = [f"https://{company_domain} (Mention Only)"]
             
         rows_to_insert = []
         for _ in unique_links:
